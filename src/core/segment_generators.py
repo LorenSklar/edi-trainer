@@ -8,15 +8,16 @@ Each function returns either clean data or data with a single realistic error.
 from faker import Faker
 import random
 from .field_generators import (
-    generate_sender_id, generate_receiver_id, generate_date, 
-    generate_time, generate_control_number, generate_group_count,
-    generate_segment_structure_error, get_error_explanation
+    generate_acknowledgment_code, generate_control_number, generate_date,
+    generate_group_count, generate_receiver_id, generate_receiver_qualifier,
+    generate_sender_id, generate_sender_qualifier, generate_segment_structure_error,
+    generate_time, generate_usage_indicator, generate_version, get_error_explanation
 )
 
 fake = Faker()
 
 
-def generate_isa_iea_pair(with_errors: bool = False) -> tuple:
+def generate_isa_iea_pair(with_errors: bool = False) -> dict:
     """
     Generate ISA and IEA segments as a pair with matching control numbers.
     
@@ -24,144 +25,179 @@ def generate_isa_iea_pair(with_errors: bool = False) -> tuple:
         with_errors: If True, introduce a single error in one of the segments
     
     Returns:
-        Tuple of (ISA_segment, IEA_segment)
+        Dictionary containing:
+        - isa_segment: ISA segment string
+        - iea_segment: IEA segment string  
+        - error_info: Error details or None if no errors
+        - shared_data: Dictionary of shared field values for consistency across segments
     """
     # Generate valid data first
+    sender_qualifier = generate_sender_qualifier(with_errors=False)
     sender_id = generate_sender_id(with_errors=False)
+    receiver_qualifier = generate_receiver_qualifier(with_errors=False)
     receiver_id = generate_receiver_id(with_errors=False)
     date = generate_date(with_errors=False)
     time = generate_time(with_errors=False)
-    control_num = generate_control_number(with_errors=False)
+    version = generate_version(with_errors=False)
+    acknowledgment_code = generate_acknowledgment_code(with_errors=False)
+    control_number = generate_control_number(with_errors=False)
+    usage_indicator = generate_usage_indicator(with_errors=False)
     group_count = generate_group_count(with_errors=False)
     
     if with_errors:
-        # Randomly choose which error type: field error or structural error
+        # Choose random error type -- field error or structural error -- with realistic weights
         error_type = random.choices(
             ["field_error", "structural_error"],
-            weights=[70, 30]  # Field errors more common than structural
+            weights=[70, 30] 
         )[0]
         
         if error_type == "field_error":
-            # Randomly choose which field to corrupt
+            # Choose random field to corrupt with equal weights
             error_target = random.choice([
-                "isa_sender_id", "isa_receiver_id", "isa_date", "isa_time", "isa_control",
-                "iea_group_count", "iea_control", "mismatched_control"
+                "sender_qualifier", "sender_id", "receiver_qualifier", "receiver_id", 
+                "date", "time", "version", "acknowledgment_code", "control_number", "usage_indicator",
+                "group_count"
             ])
         else:
-            # Structural error
-            error_target = random.choice([
+            # Structural error with realistic weights
+            error_target = random.choices([
+                "missing_entire_envelope", 
                 "isa_missing_delimiter", "isa_extra_delimiter", "isa_missing_terminator",
-                "iea_missing_delimiter", "iea_extra_delimiter", "iea_missing_terminator"
-            ])
+                "isa_missing_field", "isa_blank_field",
+                "iea_missing_delimiter", "iea_extra_delimiter", "iea_missing_terminator", 
+                "iea_missing_field", "iea_blank_field",
+                "mismatched_control", "incorrect_group_count"
+            ], weights=[
+                50,
+                10, 10, 5,  # isa delimiter/terminator errors
+                5, 5,  # isa field errors
+                10, 10, 5,  # iea delimiter/terminator errors  
+                5, 5,  # iea field errors
+                5, 5  # structural relationship errors
+            ])[0]
         
-        if error_target == "isa_sender_id":
+        if error_target == "sender_qualifier":
+            sender_qualifier = generate_sender_qualifier(with_errors=True)
+        elif error_target == "sender_id":
             sender_id = generate_sender_id(with_errors=True)
-        elif error_target == "isa_receiver_id":
+        elif error_target == "receiver_qualifier":
+            receiver_qualifier = generate_receiver_qualifier(with_errors=True)
+        elif error_target == "receiver_id":
             receiver_id = generate_receiver_id(with_errors=True)
-        elif error_target == "isa_date":
+        elif error_target == "date":
             date = generate_date(with_errors=True)
-        elif error_target == "isa_time":
+        elif error_target == "time":
             time = generate_time(with_errors=True)
-        elif error_target == "isa_control":
-            control_num = generate_control_number(with_errors=True)
-        elif error_target == "iea_group_count":
+        elif error_target == "version":
+            version = generate_version(with_errors=True)
+        elif error_target == "acknowledgment_code":
+            acknowledgment_code = generate_acknowledgment_code(with_errors=True)
+        elif error_target == "usage_indicator":
+            usage_indicator = generate_usage_indicator(with_errors=True)
+        elif error_target == "control_number":
+            control_number = generate_control_number(with_errors=True)
+        elif error_target == "group_count":
             group_count = generate_group_count(with_errors=True)
-        elif error_target == "iea_control":
-            control_num = generate_control_number(with_errors=True)
-        elif error_target == "mismatched_control":
-            # Keep ISA control number, change IEA control number
-            iea_control = generate_control_number(with_errors=False)
-            while iea_control == control_num:  # Ensure they're different
-                iea_control = generate_control_number(with_errors=False)
-            control_num = iea_control
     
     # Build segments
-    isa_segment = f"ISA*00*          *00*          *ZZ*{sender_id:<15}*ZZ*{receiver_id:<15}*{date}*{time}*^*00501*{control_num}*0*P*:~"
-    iea_segment = f"IEA*{group_count}*{control_num}~"
+    isa_segment = f"ISA*00*          *00*          *{sender_qualifier}*{sender_id}*{receiver_qualifier}*{receiver_id}*{date}*{time}*^*{version}*{control_number}*{acknowledgment_code}*{usage_indicator}*:~"
+    iea_segment = f"IEA*{group_count}*{control_number}~"
     
     # Apply structural errors if needed
     if with_errors and error_type == "structural_error":
-        if error_target.startswith("isa_"):
-            structural_error_type = error_target.replace("isa_", "")
-            isa_segment = generate_segment_structure_error(isa_segment, structural_error_type)
-        elif error_target.startswith("iea_"):
-            structural_error_type = error_target.replace("iea_", "")
-            iea_segment = generate_segment_structure_error(iea_segment, structural_error_type)
+        if error_target == "missing_entire_envelope":
+            # Return empty segments to simulate missing envelope
+            isa_segment = ""
+            iea_segment = ""
+        elif error_target == "isa_missing_delimiter":
+            # Remove a random "*" from ISA segment
+            asterisk_positions = [i for i, char in enumerate(isa_segment) if char == "*"]
+            if asterisk_positions:
+                pos_to_remove = random.choice(asterisk_positions)
+                isa_segment = isa_segment[:pos_to_remove] + isa_segment[pos_to_remove+1:]
+        elif error_target == "isa_extra_delimiter":
+            # Add an extra "*" to ISA segment
+            asterisk_positions = [i for i, char in enumerate(isa_segment) if char == "*"]
+            if asterisk_positions:
+                pos_to_duplicate = random.choice(asterisk_positions)
+                isa_segment = isa_segment[:pos_to_duplicate] + "*" + isa_segment[pos_to_duplicate:]
+        elif error_target == "isa_missing_terminator":
+            # Remove the final "~" from ISA segment
+            isa_segment = isa_segment.rstrip("~")
+        elif error_target == "isa_missing_field":
+            # Remove a random field from ISA segment
+            fields = isa_segment.split("*")
+            if len(fields) > 0:
+                fields.pop(random.randint(0, len(fields)-1))
+                isa_segment = "*".join(fields)
+        elif error_target == "isa_blank_field":
+            # Make a random field blank in ISA segment
+            fields = isa_segment.split("*")
+            if len(fields) > 0:
+                fields[random.randint(0, len(fields)-1)] = ""
+                isa_segment = "*".join(fields)
+        elif error_target == "iea_missing_delimiter":
+            # Remove a random "*" from IEA segment
+            asterisk_positions = [i for i, char in enumerate(iea_segment) if char == "*"]
+            if asterisk_positions:
+                pos_to_remove = random.choice(asterisk_positions)
+                iea_segment = iea_segment[:pos_to_remove] + iea_segment[pos_to_remove+1:]
+        elif error_target == "iea_extra_delimiter":
+            # Add an extra "*" to IEA segment
+            asterisk_positions = [i for i, char in enumerate(iea_segment) if char == "*"]
+            if asterisk_positions:
+                pos_to_duplicate = random.choice(asterisk_positions)
+                iea_segment = iea_segment[:pos_to_duplicate] + "*" + iea_segment[pos_to_duplicate:]
+        elif error_target == "iea_missing_terminator":
+            # Remove the final "~" from IEA segment
+            iea_segment = iea_segment.rstrip("~")
+        elif error_target == "iea_missing_field":
+            # Remove a random field from IEA segment
+            fields = iea_segment.split("*")
+            if len(fields) > 0:
+                fields.pop(random.randint(0, len(fields)-1))
+                iea_segment = "*".join(fields)
+        elif error_target == "iea_blank_field":
+            # Make a random field blank in IEA segment
+            fields = iea_segment.split("*")
+            if len(fields) > 0:
+                fields[random.randint(0, len(fields)-1)] = ""
+                iea_segment = "*".join(fields)
+        elif error_target == "mismatched_control":
+            # Generate a different control number
+            incorrect_control_number = generate_control_number(with_errors=False)
+            iea_segment = f"IEA*{group_count}*{incorrect_control_number}~"
+        elif error_target == "incorrect_group_count":
+            # Generate a different group count            
+            incorrect_count = random.randint(0, 1000)
+            iea_segment = f"IEA*{incorrect_count}*{control_number}~"
     
-    # Return error info for GRR explanations
+    # Return error info for error explanations
     error_info = None
     if with_errors:
+        from core.field_generators import get_error_explanation
+        explanation = get_error_explanation(error_target, "", "")
         error_info = {
             "error_type": error_type,
             "error_target": error_target,
-            "field_name": error_target.replace("isa_", "").replace("iea_", ""),
-            "segment": "ISA" if error_target.startswith("isa_") else "IEA"
+            "explanation": explanation
         }
     
-    return isa_segment, iea_segment, error_info
+    # Return dictionary with segments and shared data
+    return {
+        "isa_segment": isa_segment,
+        "iea_segment": iea_segment,
+        "error_info": error_info,
+        "shared_data": {
+            "control_number": control_number,
+            "group_count": group_count,
+            "version": version,
+            "date": date,
+            "time": time,
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "sender_qualifier": sender_qualifier,
+            "receiver_qualifier": receiver_qualifier
+        }
+    }
 
-
-def generate_isa_segment(with_errors: bool = False) -> str:
-    """Generate ISA (Interchange Control Header) segment"""
-    isa, _ = generate_isa_iea_pair(with_errors)
-    return isa
-
-
-def generate_iea_segment(with_errors: bool = False) -> str:
-    """Generate IEA (Interchange Control Trailer) segment"""
-    _, iea = generate_isa_iea_pair(with_errors)
-    return iea
-
-
-def get_isa_iea_error_explanation(isa_segment: str, iea_segment: str) -> str:
-    """
-    Analyze ISA/IEA pair and return explanation of any errors found.
-    
-    Args:
-        isa_segment: The ISA segment to analyze
-        iea_segment: The IEA segment to analyze
-    
-    Returns:
-        Explanation of errors found, or "No errors found" if clean
-    """
-    # Parse ISA fields
-    isa_fields = isa_segment.split('*')
-    if len(isa_fields) < 16:
-        return "ISA segment is malformed - missing required fields."
-    
-    # Parse IEA fields  
-    iea_fields = iea_segment.split('*')
-    if len(iea_fields) < 3:
-        return "IEA segment is malformed - missing required fields."
-    
-    # Check for mismatched control numbers
-    isa_control = isa_fields[13]  # ISA control number
-    iea_control = iea_fields[2]   # IEA control number
-    
-    if isa_control != iea_control:
-        return f"Control number mismatch: ISA has {isa_control}, IEA has {iea_control}. These must match."
-    
-    # Check ISA fields
-    sender_id = isa_fields[6]
-    receiver_id = isa_fields[8]
-    date = isa_fields[9]
-    time = isa_fields[10]
-    
-    if not sender_id or sender_id.strip() == "":
-        return get_error_explanation("Sender ID", sender_id, "alphanumeric, max 15 chars")
-    
-    if not receiver_id or receiver_id.strip() == "":
-        return get_error_explanation("Receiver ID", receiver_id, "alphanumeric, max 15 chars")
-    
-    if len(date) != 6:
-        return get_error_explanation("Date", date, "6 digits (YYMMDD)")
-    
-    if len(time) != 4:
-        return get_error_explanation("Time", time, "4 digits (HHMM)")
-    
-    # Check IEA fields
-    group_count = iea_fields[1]
-    if not group_count or group_count.strip() == "":
-        return get_error_explanation("Group Count", group_count, "1 digit")
-    
-    return "No errors found - ISA/IEA pair is valid."

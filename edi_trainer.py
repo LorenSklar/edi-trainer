@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-EDI 834 Trainer - CLI Interface
+EDI Trainer - CLI Interface
 
-Generate realistic EDI 834 transactions with controllable error rates for learning.
+Generate realistic EDI transactions with controllable error rates for learning.
 """
 
 import argparse
@@ -13,13 +13,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from core.segment_generators import generate_isa_iea_pair
-from core.field_generators import get_error_explanation
 
 
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Generate EDI 834 transactions with controllable error rates for learning",
+        description="Generate EDI transactions with controllable error rates for learning",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -29,8 +28,9 @@ Examples:
   # Generate 10 pairs with 20% error rate, no explanations
   python edi_trainer.py --count=10 --error-rate=0.2
   
-  # Generate single pair with errors and explanations (GRR learning)
-  python edi_trainer.py --count=1 --error-rate=0.3 --explain-errors
+  # Generate single pair with errors and display error info
+  python edi_trainer.py --count=1 --error-rate=0.3 --display-error
+  
   
   # Save to file
   python edi_trainer.py --count=5 --output=training_data.txt
@@ -52,10 +52,11 @@ Examples:
     )
     
     parser.add_argument(
-        "--explain-errors",
+        "--display-error", "-d",
         action="store_true",
-        help="Include detailed error explanations (GRR learning mode)"
+        help="Display error information"
     )
+    
     
     parser.add_argument(
         "--output", "-o",
@@ -90,20 +91,20 @@ Examples:
                 output_lines.append("")
             
             # Generate ISA/IEA pair
-            isa_segment, iea_segment, error_info = generate_isa_iea_pair(
+            result = generate_isa_iea_pair(
                 with_errors=args.error_rate > 0.0
             )
             
             # Add segments
-            output_lines.append(isa_segment)
-            output_lines.append(iea_segment)
+            output_lines.append(result["isa_segment"])
+            output_lines.append(result["iea_segment"])
             output_lines.append("")
             
-            # Add error explanations if requested
-            if args.explain_errors and error_info:
-                output_lines.append("# Error Explanation:")
-                explanation = get_error_explanation(error_info)
-                output_lines.append(f"# {explanation}")
+            # Add error information if requested
+            if args.display_error and result["error_info"]:
+                output_lines.append(f"# Error Type: {result['error_info']['error_type']}")
+                output_lines.append(f"# Error Target: {result['error_info']['error_target']}")
+                output_lines.append(f"# {result['error_info']['explanation']}")
                 output_lines.append("")
             
             if args.verbose:

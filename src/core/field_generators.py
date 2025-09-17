@@ -3,6 +3,16 @@ EDI Field Generators
 
 Systematic field generation for EDI with realistic error prevalence.
 Each function generates a specific field type with optional error injection.
+
+TODO - CRITICAL ISSUES TO FIX:
+1. Field generators produce unrealistic errors (like "INVALID" strings)
+2. They mistakenly "correct" errors for "EDI compliance" when the whole point is to generate errors
+3. They use random.choice and fake.bothify with question marks instead of leveraging Faker's powerful realistic data generation
+4. They pad/truncate errors back to correct lengths, defeating the purpose
+5. Error explanations are too generic - can't distinguish between missing, wrong format, wrong length, and invalid value errors
+6. Gives generic "missing" messages even when the field is clearly present
+
+FIELD GENERATORS NEED TO BE COMPLETELY REBUILT to generate realistic, believable errors that actually violate EDI standards.
 """
 
 from faker import Faker
@@ -14,7 +24,9 @@ fake = Faker()
 def generate_sender_id(with_errors: bool = False) -> str:
     """Generate sender ID with realistic error prevalence"""
     if not with_errors:
-        return fake.random_element(elements=("SENDER", "COMPANY", "HR_SYS"))
+        # Generate valid ID and pad to 15 characters
+        base_id = fake.random_element(elements=("SENDER", "COMPANY", "HR_SYS"))
+        return f"{base_id:<15}"  # Left-align and pad with spaces to 15 chars
     
     # Realistic error prevalence: missing=40%, wrong_length=30%, wrong_format=20%, invalid_value=10%
     error_type = random.choices(
@@ -25,17 +37,19 @@ def generate_sender_id(with_errors: bool = False) -> str:
     if error_type == "missing":
         return ""
     elif error_type == "wrong_length":
-        return fake.bothify(text="?" * 20, letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ")  # Too long
+        return fake.company()[:8]  # Too short (8 chars)
     elif error_type == "wrong_format":
-        return fake.bothify(text="?" * 8, letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%")  # Invalid chars
+        return fake.bothify(text="???????????????", letters="0123456789@#$%")  # Numbers and symbols
     else:  # invalid_value
-        return fake.bothify(text="?" * 8, letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ")  # Valid format, wrong value
+        return fake.company()  # Real company name but wrong format
 
 
 def generate_receiver_id(with_errors: bool = False) -> str:
     """Generate receiver ID with realistic error prevalence"""
     if not with_errors:
-        return fake.random_element(elements=("RECEIVER", "CARRIER", "BCBS"))
+        # Generate valid ID and pad to 15 characters
+        base_id = fake.random_element(elements=("RECEIVER", "CARRIER", "BCBS"))
+        return f"{base_id:<15}"  # Left-align and pad with spaces to 15 chars
     
     # Realistic error prevalence: missing=40%, wrong_length=30%, wrong_format=20%, invalid_value=10%
     error_type = random.choices(
@@ -46,17 +60,22 @@ def generate_receiver_id(with_errors: bool = False) -> str:
     if error_type == "missing":
         return ""
     elif error_type == "wrong_length":
-        return fake.bothify(text="?" * 20, letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ")  # Too long
+        return fake.company()[:8]  # Too short (8 chars)
     elif error_type == "wrong_format":
-        return fake.bothify(text="?" * 8, letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%")  # Invalid chars
+        return fake.bothify(text="???????????????", letters="0123456789@#$%")  # Numbers and symbols
     else:  # invalid_value
-        return fake.bothify(text="?" * 8, letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ")  # Valid format, wrong value
+        return fake.company()  # Real company name but wrong format
 
 
 def generate_date(with_errors: bool = False) -> str:
     """Generate date with realistic error prevalence"""
     if not with_errors:
-        return fake.date(pattern="%y%m%d")  # Correct YYMMDD format
+        # Generate date from 1970 onwards using datetime
+        from datetime import datetime, timedelta
+        start_date = datetime(1970, 1, 1)
+        end_date = datetime.now()
+        random_date = start_date + timedelta(days=random.randint(0, (end_date - start_date).days))
+        return random_date.strftime("%y%m%d")
     
     # Realistic error prevalence: missing=30%, wrong_length=25%, wrong_format=35%, invalid_value=10%
     error_type = random.choices(
@@ -67,11 +86,16 @@ def generate_date(with_errors: bool = False) -> str:
     if error_type == "missing":
         return ""
     elif error_type == "wrong_length":
-        return fake.date(pattern="%y%m%d")  # 6 digits instead of 8
+        return fake.numerify(text="##")  # Too short (2 digits)
     elif error_type == "wrong_format":
-        return fake.date(pattern="%m/%d/%Y")  # With slashes
+        # Use Faker's date formats with separators - realistic but wrong format
+        return fake.date(pattern="%m/%d/%Y").replace("/", "")  # Slash format
     else:  # invalid_value
-        return fake.date(pattern="%Y%m%d")  # Future date
+        # Generate invalid months (13-99) and days (32-99)
+        invalid_month = fake.random_int(min=13, max=99)
+        invalid_day = fake.random_int(min=32, max=99)
+        year = fake.random_int(min=70, max=99)
+        return f"{year:02d}{invalid_month:02d}{invalid_day:02d}"
 
 
 def generate_time(with_errors: bool = False) -> str:
@@ -88,17 +112,24 @@ def generate_time(with_errors: bool = False) -> str:
     if error_type == "missing":
         return ""
     elif error_type == "wrong_length":
-        return fake.time(pattern="%H%M%S")  # 6 digits instead of 4
+        return fake.numerify(text="##")  # Too short (2 digits)
     elif error_type == "wrong_format":
-        return fake.time(pattern="%H:%M:%S")  # With colons
+        # Use Faker's time formats with separators - realistic but wrong format
+        return fake.time(pattern="%H:%M:%S").replace(":", "")  # Colon format
     else:  # invalid_value
-        return fake.time(pattern="%H%M")  # Valid format, wrong time
+        # Generate invalid hours (25-99) and minutes (60-99)
+        invalid_hour = fake.random_int(min=25, max=99)
+        invalid_minute = fake.random_int(min=60, max=99)
+        return f"{invalid_hour:02d}{invalid_minute:02d}"
 
 
 def generate_control_number(with_errors: bool = False) -> str:
     """Generate control number with realistic error prevalence"""
     if not with_errors:
-        return str(fake.random_number(digits=9))
+        # Generate control number starting with 0000000 (7 zeros) + 2 random digits
+        # This is more realistic for EDI control numbers
+        last_two = fake.random_number(digits=2)
+        return f"0000000{last_two:02d}"  # 7 zeros + 2 digits = 9 total
     
     # Realistic error prevalence: missing=25%, wrong_length=35%, wrong_format=25%, invalid_value=15%
     error_type = random.choices(
@@ -109,11 +140,11 @@ def generate_control_number(with_errors: bool = False) -> str:
     if error_type == "missing":
         return ""
     elif error_type == "wrong_length":
-        return fake.bothify(text="?" * 3, letters="0123456789")  # Too short
+        return fake.numerify(text="###")  # Too short (3 digits)
     elif error_type == "wrong_format":
-        return fake.bothify(text="?" * 9, letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")  # With letters
+        return fake.lexify(text="?????????", letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ")  # Letters instead of numbers
     else:  # invalid_value
-        return fake.bothify(text="?" * 9, letters="0123456789")  # Valid format, wrong value
+        return fake.numerify(text="##########")  # Too long (10 digits)
 
 
 def generate_group_count(with_errors: bool = False) -> str:
@@ -130,11 +161,11 @@ def generate_group_count(with_errors: bool = False) -> str:
     if error_type == "missing":
         return ""
     elif error_type == "wrong_length":
-        return fake.bothify(text="?" * 3, letters="0123456789")  # Too long
+        return fake.numerify(text="###")  # Too long (3 digits)
     elif error_type == "wrong_format":
-        return fake.bothify(text="?", letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ")  # With letters
+        return fake.lexify(text="?", letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ")  # Letter instead of number
     else:  # invalid_value
-        return fake.bothify(text="?", letters="0123456789")  # Valid format, wrong value
+        return fake.numerify(text="##")  # Too long (2 digits)
 
 
 def generate_segment_structure_error(segment: str, error_type: str) -> str:
@@ -215,3 +246,80 @@ def get_error_explanation(field_name: str, field_value: str, expected_format: st
         return f"The {field_name} field contains letters. Expected: {expected_format}."
     
     return f"The {field_name} field contains an invalid value. Expected: {expected_format}."
+
+
+def generate_sender_qualifier(with_errors: bool = False) -> str:
+    """Generate sender qualifier (ISA05)"""
+    if not with_errors:
+        return "ZZ"  # Most common for healthcare
+    
+    # Error prevalence: wrong_qualifier=60%, invalid_value=40%
+    error_type = random.choices(
+        ["wrong_qualifier", "invalid_value"],
+        weights=[60, 40]
+    )[0]
+    
+    if error_type == "wrong_qualifier":
+        # Valid qualifiers but wrong for this context
+        return random.choice(["12", "30", "31", "32"])
+    else:  # invalid_value
+        # Invalid qualifier codes
+        return random.choice(["XX", "99", "ZZZ", "AB"])
+
+
+def generate_receiver_qualifier(with_errors: bool = False) -> str:
+    """Generate receiver qualifier (ISA07)"""
+    if not with_errors:
+        return "ZZ"  # Most common for healthcare
+    
+    # Error prevalence: wrong_qualifier=60%, invalid_value=40%
+    error_type = random.choices(
+        ["wrong_qualifier", "invalid_value"],
+        weights=[60, 40]
+    )[0]
+    
+    if error_type == "wrong_qualifier":
+        # Valid qualifiers but wrong for this context
+        return random.choice(["12", "30", "31", "32"])
+    else:  # invalid_value
+        # Invalid qualifier codes
+        return random.choice(["XX", "99", "ZZZ", "AB"])
+
+
+def generate_version(with_errors: bool = False) -> str:
+    """Generate interchange control version (ISA12)"""
+    if not with_errors:
+        return "00501"  # Current standard
+    
+    # Error prevalence: old_version=70%, invalid_version=30%
+    error_type = random.choices(
+        ["old_version", "invalid_version"],
+        weights=[70, 30]
+    )[0]
+    
+    if error_type == "old_version":
+        # Older but valid versions
+        return random.choice(["00401", "00301", "00201"])
+    else:  # invalid_version
+        # Invalid version codes
+        return random.choice(["00502", "00601", "99999", "V501"])
+
+
+def generate_acknowledgment_code(with_errors: bool = False) -> str:
+    """Generate acknowledgment requested (ISA14)"""
+    if not with_errors:
+        # Random pick between 0 and 1, with 0 more common
+        return random.choices(["0", "1"], weights=[90, 10])[0]
+    
+    # Error: single pick from boolean values
+    return random.choice(["Y", "N", "Yes", "No", "T", "F", "TRUE", "FALSE"])
+
+
+def generate_usage_indicator(with_errors: bool = False) -> str:
+    """Generate usage indicator (ISA15) - Test/Production"""
+    if not with_errors:
+        # Random pick between T and P, with T more common
+        return random.choices(["T", "P"], weights=[80, 20])[0]
+    
+    # Error: single pick from invalid values
+    return random.choice(["X", "1", "0", "PROD", "TEST", "S", "Q", "D", "U"])
