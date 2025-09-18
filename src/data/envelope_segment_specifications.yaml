@@ -1,0 +1,341 @@
+# ISA/IEA Segment and Field Definitions
+# Interchange Control Header and Trailer segments
+#
+# IMPORTANT: For error generation to work properly, each field needs either:
+# - common_errors: List of explicit invalid values to use (PREFERRED)
+# - valid_values: List of valid values (system will generate invalid ones not in this list)
+# If neither is present, invalid_value errors will fallback to "N/A" which invalid in almost character sets)
+
+segments:
+  ISA:
+    name: "Interchange Control Header"
+    description: "Defines the start of an EDI interchange and contains sender and receiver IDs, date, time, and control number"
+    purpose: "Leading segment that initiates the EDI transaction"
+    rules: "Segment contains exactly 16 fields separated by asterisks (*). Ends with tilde (~). Fixed length of 106 characters. All fields are required."
+    required: true
+    position: "first"
+    
+  IEA:
+    name: "Interchange Control Trailer"
+    description: "Defines the end of an EDI interchange and contains functional group count and control number"
+    purpose: "Closing segment that corresponds to the ISA header"
+    rules: "Segment contains exactly 2 fields separated by asterisks (*). Ends with tilde (~). Control number matches ISA header control number. Group count matches actual number of functional groups."
+    required: true
+    position: "last"
+
+fields:
+  ISA01:
+    name: "Authorization Information Qualifier"
+    purpose: "Identifies the type of authorization information"
+    rules: "Exactly 2 digits. Numbers only. Cannot be blank."
+    characterset: "numeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["00", "01", "02"]
+    # 00=no authorization, 01=password, 02=shared secret
+    error_scenarios: ["non_standard_value"]
+    required: true
+    position: 1
+    default: "00"
+    
+  ISA02:
+    name: "Authorization Information"
+    purpose: "Authorization information (left blank when ISA01 is 00)"
+    rules: "Exactly 10 characters though left blank in modern usage."
+    characterset: "printable"
+    min_length: 10
+    max_length: 10
+    examples: '"          ", "AUTH123456", "PASSWORD90"'
+    required: true
+    position: 2
+    default: "          "
+    
+  ISA03:
+    name: "Security Information Qualifier"
+    purpose: "Identifies the type of security information"
+    rules: "Exactly 2 digits. Numbers only. Cannot be blank."
+    characterset: "numeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["00", "01", "02"]
+    # 00=no security, 01=password, 02=shared secret
+    error_scenarios: ["non_standard_value"]
+    required: true
+    position: 3
+    default: "00"
+    
+  ISA04:
+    name: "Security Information"
+    purpose: "Security information (left blank when ISA03 is 00)"
+    rules: "Exactly 10 characters though left blank in modern usage."
+    characterset: "printable"
+    min_length: 10
+    max_length: 10
+    examples: '"          ", "SECURE1234", "SECRET7890"'
+    required: true
+    position: 4
+    default: "          "
+    
+  ISA05:
+    name: "Interchange ID Qualifier (Sender)"
+    purpose: "Identifies the type of sender ID"
+    rules: "Exactly 2 characters. Numbers or letters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["ZZ", "01", "02", "03"]
+    # ZZ=mutually defined, 01=DUNS, 02=SCAC, 03=Federal Tax ID
+    error_scenarios: ["non_standard_value"] 
+    required: true
+    position: 5
+    default: "ZZ"
+    
+  ISA06:
+    name: "Interchange Sender ID"
+    purpose: "Unique identifier for the sending organization"
+    rules: "Exactly 15 characters. Right-padded with spaces if shorter. Cannot be blank."
+    field_type: "company_name"
+    characterset: "printable"
+    min_length: 15
+    max_length: 15
+    examples: '"SENDER_ID      ", "COMPANY_NAME   ", "HR_SYS_123     "'
+    required: true
+    position: 6
+    default: "SENDER_ID      "
+    
+  ISA07:
+    name: "Interchange ID Qualifier (Receiver)"
+    purpose: "Identifies the type of receiver ID"
+    rules: "Exactly 2 characters. Numbers or letters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["ZZ", "01", "02", "03"]
+    # ZZ=mutually defined, 01=DUNS, 02=SCAC, 03=Federal Tax ID
+    error_scenarios: ["non_standard_value"]
+    required: true
+    position: 7
+    default: "ZZ"
+    
+  ISA08:
+    name: "Interchange Receiver ID"
+    purpose: "Unique identifier for the receiving organization"
+    rules: "Exactly 15 characters. Right-padded with spaces if shorter. Cannot be blank."
+    field_type: "company_name"
+    characterset: "printable"
+    min_length: 15
+    max_length: 15
+    examples: '"RECEIVER_ID    ", "CARRIER_NAME   ", "BCBS_123       "'
+    required: true
+    position: 8
+    default: "RECEIVER_ID    "
+    
+  ISA09:
+    name: "Interchange Date"
+    purpose: "Date the interchange was created"
+    rules: "Exactly 6 digits in YYMMDD format. Numbers only. Cannot be blank."
+    field_type: "date"
+    characterset: "numeric"
+    min_length: 6
+    max_length: 6
+    examples: '"250915", "251201", "990101"'
+    # Format: YYMMDD (2-digit year, 2-digit month, 2-digit day)
+    error_scenarios: ["incorrect_date_format", "invalid_month", invalid_day", "future_date"]
+    required: true
+    position: 9
+    default: "250101"
+    
+  ISA10:
+    name: "Interchange Time"
+    purpose: "Time the interchange was created"
+    rules: "Exactly 4 digits in HHMM format. Numbers only. Cannot be blank."
+    field_type: "time"
+    characterset: "numeric"
+    min_length: 4
+    max_length: 4
+    examples: '"1430", "0900", "2359"'
+    # Format: HHMM (24-hour format)
+    error_scenarios: ["incorrect_time_format", "invalid_hour", "invalid_minute"]
+    required: true
+    position: 10
+    default: "1010"
+    
+  ISA11:
+    name: "Repetition Separator"
+    purpose: "Indicates the character used to separate repeated data elements"
+    rules: "Exactly 1 character. Cannot be blank."
+    characterset: "printable"
+    min_length: 1
+    max_length: 1
+    valid_values: ["^", "+", "|"]
+    error_scenarios: ["non_standard_value"]
+    required: true
+    position: 11
+    default: "^"
+
+    
+  ISA12:
+    name: "Interchange Control Version Number"
+    purpose: "Version of the EDI standard"
+    rules: "Exactly 5 characters. Numbers or letters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 5
+    max_length: 5
+    valid_values: ["00501", "00401", "00301"]
+    # 00501=5010 version, 00401=4010 version, 00301=3010 version
+    error_scenarios: ["non_standard_value"]
+    required: true
+    position: 12
+    default: "00501"
+    
+  ISA13:
+    name: "Interchange Control Number"
+    purpose: "Unique number for this interchange"
+    rules: "Exactly 9 digits. Numbers only. Cannot be blank."
+    characterset: "numeric"
+    min_length: 9
+    max_length: 9
+    examples: '"000000001", "000000123", "123456789"'
+    error_scenarios: ["all_zeros"]
+    required: true
+    position: 13
+    default: "123456789"
+    
+  ISA14:
+    name: "Acknowledgment Requested"
+    purpose: "Whether acknowledgment is requested"
+    rules: "Exactly 1 digit. Numbers only. Cannot be blank."
+    characterset: "numeric"
+    min_length: 1
+    max_length: 1
+    valid_values: ["0", "1"]
+    # 0=no acknowledgment, 1=acknowledgment requested
+    common_errors: ["Y", "N", "YES", "NO", "T", "F", "TRUE", "FALSE"]
+    required: true
+    position: 14
+    default: "0"
+    
+  ISA15:
+    name: "Usage Indicator"
+    purpose: "Indicates if this is test or production data"
+    rules: "Exactly 1 character. Cannot be blank."
+    characterset: "alpha"
+    min_length: 1
+    max_length: 1
+    valid_values: ["P", "T"]
+    # P=production, T=test
+    common_errors: ["TEST", "PROD", "D", "S", "Q", "p", "t"]
+    required: true
+    position: 15
+    default: "T"
+    
+  ISA16:
+    name: "Component Element Separator"
+    purpose: "Separator for component elements within data elements"
+    rules: "Exactly 1 character. Cannot be blank."
+    characterset: "printable"
+    min_length: 1
+    max_length: 1
+    valid_values: [":", ">", "+"]
+    # Use colon (:) for 5010 standard
+    error_scenarios: ["non_standard_value"]
+    required: true
+    position: 16
+    default: ":"
+
+  IEA01:
+    name: "Number of Functional Groups"
+    purpose: "Count of functional groups in this interchange"
+    rules: "1 to 5 digits. Numbers only. Cannot be blank."
+    characterset: "numeric"
+    min_length: 1
+    max_length: 5
+    examples: '"1", "2", "10", "100"'
+    error_scenarios: ["all_zeros", "mismatch_count"]
+    required: true
+    position: 1
+    default: "1"
+    
+  IEA02:
+    name: "Interchange Control Number"
+    purpose: "Check versus ISA13 control number to ensure match"
+    rules: "Exactly 9 digits. Numbers only. Must match ISA header control number."
+    characterset: "numeric"
+    min_length: 9
+    max_length: 9
+    examples: '"000000001", "000000123", "123456789"'
+    error_scenarios: ["all_zeros", "mismatch_control_number"]
+    required: true
+    position: 2
+    default: "123456789"
+
+# Segment validation rules
+validation_rules:
+  # Transaction structure validation
+  transaction_begins_with_isa:
+    description: "Transaction begins with valid ISA segment"
+    segment: "ISA"
+    rule: "transaction_starts_with_isa"
+    
+  transaction_ends_with_iea:
+    description: "Transaction ends with valid IEA segment"
+    segment: "IEA"
+    rule: "transaction_ends_with_iea"
+    
+  # Field count validation
+  isa_field_count:
+    description: "ISA segment contains exactly 16 fields"
+    segment: "ISA"
+    rule: "exact_field_count_16"
+    
+  iea_field_count:
+    description: "IEA segment contains exactly 2 fields"
+    segment: "IEA"
+    rule: "exact_field_count_2"
+    
+  # Segment length validation
+  isa_length:
+    description: "ISA segment contains exactly 106 characters"
+    segment: "ISA"
+    rule: "exact_length_106"
+    
+  iea_length:
+    description: "IEA segment contains 20-24 characters"
+    segment: "IEA"
+    rule: "length_range_20_24"
+    
+  # Delimiter validation
+  segment_terminator:
+    description: "Segment ends with tilde (~)"
+    segments: ["ISA", "IEA"]
+    rule: "ends_with_tilde"
+    
+  field_separator:
+    description: "Fields separated by asterisks (*)"
+    segments: ["ISA", "IEA"]
+    rule: "fields_separated_by_asterisk"
+    
+  # Cross-field validation
+  control_number_matching:
+    description: "ISA13 and IEA02 requires exact match"
+    fields: ["ISA13", "IEA02"]
+    rule: "exact_match"
+    
+  date_format:
+    description: "ISA09 requires YYMMDD format"
+    fields: ["ISA09"]
+    rule: "date_format_YYMMDD"
+    
+  time_format:
+    description: "ISA10 requires HHMM format"
+    fields: ["ISA10"]
+    rule: "time_format_HHMM"
+    
+  # Business logic validation
+  date_time_consistency:
+    description: "ISA09 date and ISA10 time in past or present"
+    fields: ["ISA09", "ISA10"]
+    rule: "date_time_not_future"
+    
+
+  

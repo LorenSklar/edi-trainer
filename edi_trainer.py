@@ -12,118 +12,82 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from core.segment_generators import generate_isa_iea_pair
-
 
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Generate EDI transactions with controllable error rates for learning",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Generate 5 clean ISA/IEA pairs
-  python edi_trainer.py --count=5 --error-rate=0.0
-  
-  # Generate 10 pairs with 20% error rate, no explanations
-  python edi_trainer.py --count=10 --error-rate=0.2
-  
-  # Generate single pair with errors and display error info
-  python edi_trainer.py --count=1 --error-rate=0.3 --display-error
-  
-  
-  # Save to file
-  python edi_trainer.py --count=5 --output=training_data.txt
-        """
+        description="Generate realistic EDI 834 transactions with controllable error rates"
     )
     
     parser.add_argument(
-        "--count", "-c",
-        type=int,
+        "-c", "--count", 
+        type=int, 
         default=1,
-        help="Number of ISA/IEA pairs to generate (default: 1)"
+        help="Number of transactions to generate (default: 1)"
     )
     
     parser.add_argument(
-        "--error-rate", "-e",
+        "-e", "--error-rate",
         type=float,
         default=0.0,
-        help="Error rate (0.0-1.0) - probability of introducing errors (default: 0.0)"
+        help="Error injection rate (0.0-1.0, default: 0.0)"
     )
     
     parser.add_argument(
-        "--display-error", "-d",
-        action="store_true",
-        help="Display error information"
-    )
-    
-    
-    parser.add_argument(
-        "--output", "-o",
+        "-o", "--output",
         type=str,
         help="Output file path (default: stdout)"
     )
     
     parser.add_argument(
-        "--verbose", "-v",
+        "-l", "--learning-mode",
         action="store_true",
-        help="Include human-readable comments and field descriptions"
+        default=True,
+        help="Learning mode: generate transaction, wait for user input, then show error report."
+    )
+    
+    parser.add_argument(
+        "-d", "--display-error",
+        action="store_true",
+        help="Disable learning mode and show error report immediately"
     )
     
     args = parser.parse_args()
     
-    # Validate arguments
-    if not 0.0 <= args.error_rate <= 1.0:
-        print("Error: error-rate must be between 0.0 and 1.0", file=sys.stderr)
-        sys.exit(1)
-    
+    # Input validation
     if args.count < 1:
-        print("Error: count must be at least 1", file=sys.stderr)
-        sys.exit(1)
+        parser.error("Please provide a count of at least 1")
     
-    # Generate transactions
-    try:
-        output_lines = []
+    if not 0.0 <= args.error_rate <= 1.0:
+        parser.error("Please provide an error rate between 0.0 and 1.0")
+    
+    # Generate single transaction using transaction_generator
+    from core.transaction_generator import generate_834_transaction
+    
+    result = generate_834_transaction(error_rate=args.error_rate)
+    
+    # Print transaction to stdout
+    print(result["transaction"])
+    
+    # Handle learning mode (default behavior)
+    if args.learning_mode and not args.display_error:
+        print("\nPress Enter for error report...")
+        input()
+        args.display_error = True
+    
+    # Handle error display if --display-error flag is set or learning mode completed
+    if args.display_error:
+        print("\n--- ERROR REPORT ---")
+        error_info = result["error_info"]
         
-        for i in range(args.count):
-            if args.verbose:
-                output_lines.append(f"# Transaction {i+1}/{args.count}")
-                output_lines.append("")
-            
-            # Generate ISA/IEA pair
-            result = generate_isa_iea_pair(
-                with_errors=args.error_rate > 0.0
-            )
-            
-            # Add segments
-            output_lines.append(result["isa_segment"])
-            output_lines.append(result["iea_segment"])
-            output_lines.append("")
-            
-            # Add error information if requested
-            if args.display_error and result["error_info"]:
-                output_lines.append(f"# Error Type: {result['error_info']['error_type']}")
-                output_lines.append(f"# Error Target: {result['error_info']['error_target']}")
-                output_lines.append(f"# {result['error_info']['explanation']}")
-                output_lines.append("")
-            
-            if args.verbose:
-                output_lines.append("# End Transaction")
-                output_lines.append("")
+        error_found = False
+        for key, value in error_info.items():
+            if value is not None:
+                print(f"{key.replace('_', ' ').title()}: {value}")
+                error_found = True
         
-        # Output results
-        output_text = "\n".join(output_lines)
-        
-        if args.output:
-            with open(args.output, 'w') as f:
-                f.write(output_text)
-            print(f"Generated {args.count} ISA/IEA pairs to {args.output}")
-        else:
-            print(output_text)
-            
-    except Exception as e:
-        print(f"Error generating transactions: {e}", file=sys.stderr)
-        sys.exit(1)
+        if not error_found:
+            print("No errors found")
 
 
 if __name__ == "__main__":

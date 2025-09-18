@@ -1,0 +1,8 @@
+# EDI Character Sets
+# Defines the character sets used in EDI field validation and generation
+
+numeric: "0123456789"
+alpha: "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+alphanumeric: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+printable: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ *~:>+^"
+extended: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ *~:>+^%[]_{}\\|<>`#$"

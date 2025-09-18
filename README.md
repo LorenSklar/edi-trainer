@@ -7,18 +7,18 @@
 EDI 834 (Health Care Benefit Enrollment and Maintenance) transactions are the backbone of healthcare enrollment systems, but learning them is brutal. Most training materials are dry specifications that don't prepare you for real-world scenarios. This tool generates realistic 834 transactions with controllable error rates, matching 999 acknowledgments, and interactive learning modules.
 
 **Perfect for:**
-- Healthcare enrollment specialists preparing for job interviews
-- Developers integrating with healthcare systems
-- Anyone who needs to understand EDI without paying for expensive enterprise training
+- **Healthcare enrollment specialists** preparing for job interviews
+- **Developers** integrating with healthcare systems
+- **Anyone** who needs to understand EDI without paying for expensive enterprise training
 
 ## Why does this exist?
 
 The current EDI learning ecosystem is broken:
-- Training materials cost thousands of dollars
-- Specifications are unreadable for beginners
-- No realistic test data for practice
-- Error scenarios are poorly documented
-- Most tools are enterprise-focused, not educational
+- **Training materials** cost thousands of dollars
+- **Specifications** are unreadable for beginners
+- **No realistic test data** for practice
+- **Error scenarios** are poorly documented
+- **Most tools** are enterprise-focused, not educational
 
 We're building the EDI trainer we wished existed when we were learning this stuff.
 
@@ -35,24 +35,37 @@ We're building the EDI trainer we wished existed when we were learning this stuf
 
 ### Roadmap
 
-**Phase 1: Go Deep on ISA/IEA pairs**
-- **v1.0**: CLI with ISA/IEA pair generation and error injection 
-- **v2.0**: REST API for programmatic access and integration testing
-- **v3.0**: Svelte frontend with transaction viewer
-- **v3.3**: Add flashcards
-- **v3.5**: Add question prompts
-- **v3.7**: Add multiple choice
-- **v3.8**: YAML-driven clean field generation to replace example-driven generators)
-- **v3.9**: YAML-driven error generation to replace example-driven error patterns)
+## Phase 1: Core CLI Training
+- **v1.0**: CLI generates ISA/IEA pairs with controllable error injection
+- **v1.1**: Modular segment generators (ISA generator, IEA generator, etc)
+- **v1.2**: Modular field generators including with_error parameter
+- **v1.3**: Generic error generators
+- **v1.4**: YAML-driven clean field generation
+- **v1.5**: YAML-driven error field generation with error explanations embedded so full specifications for each field is available
 
-**Phase 2: Go Broad to Other Segments and Forms (v7.0+)**
-- **v7.0**: Add remaining 834 segments
-- **v8.0**: EDI 997/999 (Functional/Implementation Acknowledgments) training (Note that 999s pair with 834s and reflect error free or actual errors)
-- **v9.0**: EDI 835 (Payment/Remittance) transaction training
-- **v10.0**: EDI 837 (Claims) transaction training  
-- **v11.0**: EDI 270/271 (Eligibility) transaction training
-- **v12.0**: NLP answers and AI powered feedback
-- 
+## Phase 2: Complete 834 Segments
+- **v2.0**: CLI generates a full 834 transaction (ISA + GS + ST → segments → SE + GE + IEA)
+- **v2.1**: Add header segments (BGN, REF, DTP)
+- **v2.2**: Member demographic loop (INS, NM1, PER)
+- **v2.3**: Member coverage loop (HD, DTP, REF)
+- **v2.4**: Benefit election loop (BEN, AMT, COB)
+- **v2.5**: CLI generates 997/999 acknowledgments in response to the 834 with and without errors
+
+## Phase 3: Add Multiple Choice
+- **v3.0**: REST API (single record or bulk generation)
+- **v3.1**: Svelte frontend for transaction viewer
+- **v3.2**: Question types include:
+    - Identify correct segment given a field
+    - Identify correct field given segment
+    - Identify the field with the error
+    - Correct field with error
+    - Identify structural error
+    - Correct structural error
+## Phase 4: Full constructivist tool
+- **v4.0**: NLP answers with AI feedback
+- **v4.1**: Scaffolding learning modules with progressive difficulty
+- **v4.2**: Enrichment activities for advanced learners
+- **v4.3**: Non-linear learning paths based on individual progress
 
 **Why this approach?**
 - Each version is shippable and provides immediate value
@@ -65,31 +78,28 @@ We're building the EDI trainer we wished existed when we were learning this stuf
 # Install dependencies
 pip install -r requirements.txt
 
-# Test the tool with a single transaction showing error data
-python edi_trainer.py --count=1 --error-rate=0.5 --display-error
+# Generate a single transaction with guaranteed errors
+python edi_trainer.py --error-rate=1.0
 
-# Generate 10 clean 834 transactions
-python edi_trainer.py --count=10 --error-rate=0.0 --output=clean_batch.txt
+# Generate a single transaction with realistic error rate
+python edi_trainer.py -e 0.3
 
-# Generate 100 transactions with 15% error rate (no explanations)
-python edi_trainer.py --count=100 --error-rate=0.15 --output=test_batch.txt
-
-# Generate single transaction for learning with error explanations
-python edi_trainer.py --count=1 --error-rate=0.3 --display-error --output=learning.txt
+# Skip interactive mode and show errors immediately
+python edi_trainer.py -e 0.3 -d
 ```
 
 ## Common Use Cases
 
 ### Enrollment Specialist Job Training
 ```bash
-# Step 1: Practice identifying errors without help
-python edi_trainer.py --count=5 --scenario=new_hire --error-rate=0.2 --output=challenge.txt
+# Step 1: Guaranteed errors and see error report immediately
+python edi_trainer.py --count=5 --error-rate=1.0 --display-error
 
-# Step 2: Get explanations to reinforce learning
-python edi_trainer.py --count=5 --scenario=new_hire --error-rate=0.2 --explain-errors --output=learning.txt
+# Step 2: Guaranteed errors and identify error before checking
+python edi_trainer.py --count=5 --error-rate=1.0
 
-# Step 3: Test yourself again without explanations
-python edi_trainer.py --count=10 --error-rate=0.3 --output=final_test.txt
+# Step 3: Realistic mix of errors and no errors
+python edi_trainer.py --count=10 --error-rate=0.3
 ```
 
 ### System Testing
@@ -192,8 +202,8 @@ The trainer injects realistic errors you'll encounter in production. Use `--expl
 - `--error-rate 0.0`: Clean data only
 - `--error-rate 0.1`: 10% of transactions have errors
 - `--error-rate 0.5`: High error rate for stress testing
-- `--explain-errors`: Include detailed error explanations (GRR learning)
-- `--no-explain-errors`: Generate errors without explanations (challenge mode)
+- `--display-error`: Show error report immediately (disables learning mode)
+- `--learning-mode`: Interactive mode - wait for user input before showing errors (default)
 
 ### Output Formats
 - `single`: Individual 834 transactions
