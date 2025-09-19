@@ -8,18 +8,9 @@ Builds full transactions using segment generators.
 import random
 import yaml
 from pathlib import Path
-from .envelope_segment_generator import (
-    generate_isa_segment, generate_iea_segment, generate_gs_segment, 
-    generate_ge_segment, generate_st_segment, generate_se_segment, generate_bgn_segment
-)
-from .member_segment_generator import (
-    generate_nm1_segment, generate_per_segment, generate_n3_segment, 
-    generate_n4_segment, generate_dmg_segment
-)
-from .coverage_segment_generator import (
-    generate_n1_segment, generate_ins_segment, generate_ref_segment,
-    generate_dtp_segment, generate_hd_segment, generate_cob_segment
-)
+from .envelope_segment_generator import generate_envelope_data
+from .member_segment_generator import generate_member_data
+from .coverage_segment_generator import generate_coverage_data
 
 
 def load_segment_list(verbose=False):
@@ -90,9 +81,14 @@ def generate_834_transaction(error_rate=0.0, count=1):
         # Generate error info for injection
         error_info["error_target"] = random.choices(["SEGMENT", "FIELD"], weights=[20, 80])[0]
         
-        # Pick a random segment to fuck up
+        # Pick a random segment to target
         if segment_list:
             error_info["error_segment"] = random.choice(segment_list)
+    
+    # PHASE 1: GENERATE - Generate all segment data
+    envelope_data = generate_envelope_data(error_info)
+    member_data = generate_member_data(error_info)
+    coverage_data = generate_coverage_data(error_info)
     
     """
     TODO: Add different purposes for multiple N1, REF, DTP segments for realism
@@ -105,72 +101,63 @@ def generate_834_transaction(error_rate=0.0, count=1):
     segments = []
     
     # Interchange and functional group headers
-    segments.append(generate_isa_segment(error_info))
-    segments.append(generate_gs_segment(error_info))
+    segments.extend(envelope_data["isa"])
+    segments.extend(envelope_data["gs"])
     
     # Transaction sets (ST/SE loops)
     for i in range(count):
-        segments.append(generate_st_segment(error_info))
-        segments.append(generate_bgn_segment(error_info))
+        segments.extend(envelope_data["st"])
+        segments.extend(envelope_data["bgn"])
         
-        # N1 segments (e.g.Sponsor, Insurance Company, sometimes Broker)
+        # N1 segments (e.g. Sponsor, Insurance Company, sometimes Broker)
         n1_count = random.choices([2, 3], weights=[70, 30])[0]
-        for _ in range(n1_count):
-            segments.append(generate_n1_segment(error_info))
+        segments.extend(coverage_data["n1_segments"][:n1_count])
         
-        segments.append(generate_ins_segment(error_info))
+        segments.extend(coverage_data["ins"])
         
         # REF segments (e.g. Subscriber ID, Group Number, Policy Number)
         ref_count = random.choices([1, 2, 3], weights=[60, 30, 10])[0]
-        for _ in range(ref_count):
-            segments.append(generate_ref_segment(error_info))
+        segments.extend(coverage_data["ref_segments"][:ref_count])
         
         # DTP segments (e.g. Eligibility Date, Coverage Begin/End)
         dtp_count = random.choices([1, 2, 3, 4], weights=[50, 30, 15, 5])[0]
-        for _ in range(dtp_count):
-            segments.append(generate_dtp_segment(error_info))
+        segments.extend(coverage_data["dtp_segments"][:dtp_count])
         
-        segments.append(generate_nm1_segment(error_info))
+        segments.extend(member_data["nm1"])
         
         # PER segments (contact information)
         per_count = random.choices([0, 1, 2], weights=[60, 30, 10])[0]
-        for _ in range(per_count):
-            segments.append(generate_per_segment(error_info))
+        segments.extend(member_data["per_segments"][:per_count])
         
         # N3 segments (address information)
         n3_count = random.choices([0, 1], weights=[20, 80])[0]
-        for _ in range(n3_count):
-            segments.append(generate_n3_segment(error_info))
+        segments.extend(member_data["n3_segments"][:n3_count])
         
         # N4 segments (geographic location)
         n4_count = random.choices([0, 1], weights=[20, 80])[0]
-        for _ in range(n4_count):
-            segments.append(generate_n4_segment(error_info))
+        segments.extend(member_data["n4_segments"][:n4_count])
         
         # DMG segments (demographic information)
         dmg_count = random.choices([0, 1], weights=[30, 70])[0]
-        for _ in range(dmg_count):
-            segments.append(generate_dmg_segment(error_info))
+        segments.extend(member_data["dmg_segments"][:dmg_count])
         
         # HD segments (e.g. Health, Dental, Vision, Pet coverage)
         hd_count = random.choices([1, 2, 3], weights=[60, 30, 10])[0]
-        for _ in range(hd_count):
-            segments.append(generate_hd_segment(error_info))
-            # Each HD segment typically has multiple DTP segments (Coverage Begin, End, etc.)
+        segments.extend(coverage_data["hd_segments"][:hd_count])
+        # Each HD segment typically has multiple DTP segments (Coverage Begin, End, etc.)
+        for j in range(hd_count):
             hd_dtp_count = random.choices([1, 2, 3], weights=[40, 40, 20])[0]
-            for _ in range(hd_dtp_count):
-                segments.append(generate_dtp_segment(error_info))
+            segments.extend(coverage_data["dtp_segments"][:hd_dtp_count])
         
         # COB segments (coordination of benefits)
         cob_count = random.choices([0, 1], weights=[80, 20])[0]
-        for _ in range(cob_count):
-            segments.append(generate_cob_segment(error_info))
+        segments.extend(coverage_data["cob"][:cob_count])
         
-        segments.append(generate_se_segment(error_info))
+        segments.extend(envelope_data["se"])
     
     # Functional group and interchange trailers
-    segments.append(generate_ge_segment(error_info))
-    segments.append(generate_iea_segment(error_info))
+    segments.extend(envelope_data["ge"])
+    segments.extend(envelope_data["iea"])
     
     # Join segments with newlines
     transaction = '\n'.join(segments)

@@ -69,14 +69,69 @@ def main():
     # Print transaction to stdout
     print(result["transaction"])
     
-    # Handle learning mode (default behavior)
+    # Handle learning mode
     if args.learning_mode and not args.display_error:
-        print("\nPress Enter for error report...")
-        input()
-        args.display_error = True
+        error_info = result["error_info"]
+        
+        # Check if there are any errors to reveal
+        error_found = any(value is not None for value in error_info.values())
+        
+        if error_found:
+            # Generate list of hints and solution
+            hints = []
+            
+            # Hint 1: Segment and Field
+            hint_parts = []
+            if error_info.get("error_segment", None):
+                hint_parts.append(f"Segment with error: {error_info['error_segment']}")
+            if error_info.get("error_field", None):
+                hint_parts.append(f"Field with error: {error_info['error_field']}")
+            if hint_parts:
+                hints.append("❓ FIRST HINT:\n" + "\n".join(hint_parts))
+            
+            # Hint 2: Error Type
+            hint_parts = []
+            if error_info.get("error_type", None):
+                hint_parts.append(f"Error type: {error_info['error_type'].replace('_', ' ').title()}")
+            if hint_parts:
+                hints.append("🔍 SECOND HINT:\n" + "\n".join(hint_parts))
+            
+            # Hint 3: Error Value
+            hint_parts = []
+            if error_info.get("error_value", None):
+                hint_parts.append(f"Erroneous value: '{error_info['error_value']}'")
+            if hint_parts:
+                hints.append("🎯 THIRD HINT:\n" + "\n".join(hint_parts))
+            
+            # Solution: Error explanation
+            if error_info.get("error_explanation", None):
+                hints.append(f"✅ SOLUTION:\n{error_info['error_explanation']}")
+            
+            # Interactive hint system
+            current_index = 0
+            while current_index < len(hints):
+                print("\nPress <ENTER> for hints or A + <ENTER> for answer...")
+                
+                user_input = input()
+                if user_input == "":
+                    # Show next hint
+                    print(hints[current_index])
+                    current_index += 1
+                else:
+                    # Show all remaining hints and solution
+                    while current_index < len(hints):
+                        print(hints[current_index])
+                        current_index += 1
+                    break
+
+            
+        else:
+            print("\nPress <ENTER> for hints or A + <ENTER> for answer...")
+            input()
+            print("✅ No errors found. This is a valid EDI 834 transaction")
     
-    # Handle error display if --display-error flag is set or learning mode completed
-    if args.display_error:
+    # Handle immediate error display if --display-error flag is set
+    elif args.display_error:
         print("\n--- ERROR REPORT ---")
         error_info = result["error_info"]
         

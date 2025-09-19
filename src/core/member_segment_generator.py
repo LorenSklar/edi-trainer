@@ -73,3 +73,52 @@ def generate_dmg_date_time_period(error_info=None):
 def generate_dmg_gender_code(error_info=None):
     """Generate DMG03 field - Gender Code"""
     return "M"
+
+
+def generate_member_data(error_info=None):
+    """Generate member data"""
+    return {
+        "nm1": [generate_nm1_segment(error_info)],
+        "per_segments": [generate_per_segment(error_info), generate_per_segment(error_info)],
+        "n3_segments": [generate_n3_segment(error_info)],
+        "n4_segments": [generate_n4_segment(error_info)],
+        "dmg_segments": [generate_dmg_segment(error_info)]
+    }
+
+
+
+
+# Purpose-specific segment generators for transaction-level compilation
+def generate_per_segment_with_purpose(purpose, member_data):
+    """Generate PER segment with specific purpose"""
+    # TODO: Implement purpose-specific PER generation
+    purpose_codes = {
+        "primary": "IP",
+        "secondary": "IC"
+    }
+    code = purpose_codes.get(purpose, "IP")
+    return f"PER*{code}**HP*7172343334*WP*7172341240~"
+
+
+def generate_nm1_segment_from_data(member_data):
+    """Generate NM1 segment from member data"""
+    # TODO: Implement NM1 generation from member data
+    return "NM1*IL*1*DOE*JOHN*M***34*987654321~"
+
+
+def generate_n3_segment_from_data(member_data):
+    """Generate N3 segment from member data"""
+    # TODO: Implement N3 generation from member data
+    return "N3*100 MARKET ST*APT 3G~"
+
+
+def generate_n4_segment_from_data(member_data):
+    """Generate N4 segment from member data"""
+    # TODO: Implement N4 generation from member data
+    return "N4*CAMP HILL*PA*17011**CY*CUMBERLAND~"
+
+
+def generate_dmg_segment_from_data(member_data):
+    """Generate DMG segment from member data"""
+    # TODO: Implement DMG generation from member data
+    return "DMG*D8*19900101*M~"
