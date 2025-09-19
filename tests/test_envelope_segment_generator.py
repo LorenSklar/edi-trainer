@@ -17,7 +17,6 @@ from core.envelope_segment_generator import (
     generate_iea_segment, 
     generate_envelope_data
 )
-from core.data_generator import generate_valid_value
 
 def test_isa_segment_structure():
     """Test that ISA segment has correct structure (16 fields)."""
@@ -93,12 +92,16 @@ def test_field_values():
     """Test that specific field values are generated correctly."""
     print("Testing field value generation...")
     
-    # Test specific field generations
-    isa01 = generate_valid_value("ISA01")  # Authorization qualifier
-    isa02 = generate_valid_value("ISA02")  # Authorization info (should be 10 spaces)
-    isa06 = generate_valid_value("ISA06")  # Sender ID
-    isa09 = generate_valid_value("ISA09")  # Interchange date
-    isa10 = generate_valid_value("ISA10")  # Interchange time
+    # Generate ISA segment and extract fields
+    isa_segment = generate_isa_segment()
+    fields = isa_segment.split("*")
+    
+    # Extract specific fields (ISA01 is at index 1, ISA02 at index 2, etc.)
+    isa01 = fields[1]   # Authorization qualifier
+    isa02 = fields[2]   # Authorization info (should be 10 spaces)
+    isa06 = fields[6]   # Sender ID
+    isa09 = fields[9]   # Interchange date
+    isa10 = fields[10]  # Interchange time
     
     # Check ISA02 (authorization info) is 10 spaces
     assert isa02 == "          ", f"ISA02 should be 10 spaces, got: {repr(isa02)}"
@@ -123,13 +126,20 @@ def test_edi_delimiter_safety():
     # EDI delimiter characters that should NOT appear in field content
     edi_delimiters = "*~:>+^"
     
-    # Test content fields (not delimiter fields)
-    content_fields = ["ISA06", "ISA08"]  # Company ID fields
+    # Generate ISA segment and test content fields
+    isa_segment = generate_isa_segment()
+    fields = isa_segment.split("*")
     
-    for field in content_fields:
-        value = generate_valid_value(field)
+    # Test content fields (not delimiter fields)
+    # ISA06 (index 6) and ISA08 (index 8) are Company ID fields
+    content_fields = [
+        ("ISA06", fields[6]),   # Sender ID
+        ("ISA08", fields[8])    # Receiver ID
+    ]
+    
+    for field_name, value in content_fields:
         for delimiter in edi_delimiters:
-            assert delimiter not in value, f"Field {field} contains delimiter '{delimiter}': {repr(value)}"
+            assert delimiter not in value, f"Field {field_name} contains delimiter '{delimiter}': {repr(value)}"
     
     print("✅ No EDI delimiters found in field content")
 

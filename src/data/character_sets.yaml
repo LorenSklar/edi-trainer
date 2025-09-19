@@ -15,4 +15,4 @@ extended_safe: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀ
 numeric_unsafe: "ABCDEFGHIJKLMNOPQRSTUVWXYZ *~:>+^%[]_{}\\|<>`#$"
 alpha_unsafe: "0123456789abcdefghijklmnopqrstuvwxyz *~:>+^%[]_{}\\|<>`#$"
 alphanumeric_unsafe: "abcdefghijklmnopqrstuvwxyz *~:>+^%[]_{}\\|<>`#$"
-printable_unsafe: "abcdefghijklmnopqrstuvwxyz*~:>+^%[]_{}\\|<>`#$"
+printable_unsafe: "abcdefghijklmnopqrstuvwxyz*~:+^%[]_{}\\|<>`#$"

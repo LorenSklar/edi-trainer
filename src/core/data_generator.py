@@ -11,8 +11,7 @@ import yaml
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# YAML caches - load once, use many times
-field_specs_cache = None
+# Character sets cache - load once, use many times
 character_sets_cache = None
 
 # Initialize faker
@@ -107,81 +106,26 @@ def random_string_generator(
     # Validate and clean
     return validate_edi_field_value(result)
 
-def pick_valid_value(field_designation):
+def pick_valid_value(valid_values, weights=None):
     """
-    Pick a random valid value from YAML field specifications.
+    Pick a random valid value from a list.
     
     Args:
-        field_designation: Field ID (e.g., "ISA01", "ISA03")
+        valid_values: List of valid values to choose from
+        weights: Optional list of weights for weighted selection
         
     Returns:
-        str: Random valid value from the field's valid_values list
+        str: Random valid value from the list
     """
-    field_specs = load_field_specs()
+    if not valid_values:
+        return "N/A"
     
-    # Extract segment name from field designation (e.g., "ISA01" -> "ISA")
-    segment_name = field_designation[:3]
-    
-    # Get field spec from nested structure
-    if segment_name in field_specs and 'fields' in field_specs[segment_name]:
-        field_spec = field_specs[segment_name]['fields'].get(field_designation, {})
-        
-        valid_values = field_spec.get("valid_values", [])
-        if valid_values:
-            # Weight "00" much higher for authorization/security qualifiers
-            if field_designation in ["ISA01", "ISA03"] and "00" in valid_values:
-                # 90% chance of "00", 5% each for other values
-                weights = [0.9 if val == "00" else 0.05 for val in valid_values]
-                return random.choices(valid_values, weights=weights)[0]
-            else:
-                return random.choice(valid_values)
-        
-        # Fallback to default if no valid_values
-        return field_spec.get("default", "N/A")
-    
-    return "N/A"
+    if weights:
+        return random.choices(valid_values, weights=weights)[0]
+    else:
+        return random.choice(valid_values)
 
 
-def generate_field_value(field_designation, min_length=None, max_length=None):
-    """
-    Generate a field value based on YAML field specifications.
-    Uses field_type to determine the appropriate generator.
-    
-    Args:
-        field_designation: Field ID (e.g., "ISA06", "ISA08")
-        min_length: Override min_length from YAML
-        max_length: Override max_length from YAML
-        
-    Returns:
-        str: Generated field value
-    """
-    field_specs = load_field_specs()
-    
-    # Extract segment name from field designation (e.g., "ISA06" -> "ISA")
-    segment_name = field_designation[:3]
-    
-    # Get field spec from nested structure
-    if segment_name in field_specs and 'fields' in field_specs[segment_name]:
-        field_spec = field_specs[segment_name]['fields'].get(field_designation, {})
-        
-        # Use provided lengths or fall back to YAML specs
-        field_min_length = min_length or field_spec.get("min_length", 1)
-        field_max_length = max_length or field_spec.get("max_length", 50)
-        
-        # Get field type from YAML
-        field_type = field_spec.get("field_type", "generic")
-        
-        # Generate based on field type
-        if field_type in ["company_name", "insurance_provider"]:
-            return random_faker_generator(field_type, field_min_length, field_max_length)
-        elif field_spec.get("valid_values"):
-            return pick_valid_value(field_designation)
-        else:
-            # Fallback to string generation
-            characterset = field_spec.get("characterset", "alphanumeric")
-            return random_string_generator(characterset, field_min_length, field_max_length)
-    
-    return "N/A"
 
 
 def random_faker_generator(
@@ -375,96 +319,3 @@ def parse_segment_specs(raw_yaml):
     
     return parsed_specs
 
-def load_field_specs():
-    """Load and cache all field specifications from all YAML files."""
-    global field_specs_cache
-    if field_specs_cache is None:
-        field_specs_cache = {}
-        
-        # Load from all YAML files
-        yaml_files = [
-            "envelope_segment_specifications.yaml",
-            "member_segment_specifications.yaml", 
-            "coverage_segment_specifications.yaml"
-        ]
-        
-        for yaml_file in yaml_files:
-            yaml_path = Path(__file__).parent.parent / "data" / yaml_file
-            if yaml_path.exists():
-                with open(yaml_path, 'r') as f:
-                    raw_yaml = yaml.safe_load(f)
-                # Parse and merge into single cache
-                parsed_specs = parse_segment_specs(raw_yaml)
-                field_specs_cache.update(parsed_specs)
-    
-    return field_specs_cache
-
-def generate_valid_value(field_designation):
-    """
-    Generate a valid value for a field based on its YAML specification.
-    Uses flexible core generators based on field type and YAML data.
-    
-    Args:
-        field_designation: e.g., "ISA01", "ISA06", "N101"
-        
-    Returns:
-        str: Valid value for the field
-    """
-    field_specs = load_field_specs()
-    
-    # Parse segment and field from designation (e.g., "ISA01" -> segment="ISA", field="ISA01")
-    segment_name = field_designation[:3]  # "ISA", "IEA", "NM1", etc.
-    
-    if segment_name not in field_specs or field_designation not in field_specs[segment_name]['fields']:
-        # Fallback to default if field not found
-        return "DEFAULT"
-    
-    field_spec = field_specs[segment_name]['fields'][field_designation]
-    
-    # Handle special cases first
-    if field_designation == "ISA02":
-        # Authorization info should be 10 spaces when no authorization
-        return "          "
-    elif field_designation == "ISA04":
-        # Security info should be 10 spaces when no security
-        return "          "
-    elif field_designation in ["ISA06", "ISA08"]:
-        # Company IDs should be right-padded to 15 characters (EDI standard)
-        company_name = random_faker_generator("company_name", 1, 15)
-        return company_name.rjust(15, ' ')
-    elif field_designation in ["ISA11", "ISA16"]:
-        # These fields ARE the delimiter characters - use original printable set
-        return random_string_generator(
-            characterset=field_spec.get("characterset", "printable"),
-            min_length=field_spec.get("min_length", 1),
-            max_length=field_spec.get("max_length", 1),
-            valid_values=field_spec.get("valid_values", [])
-        )
-    
-    # Route to appropriate core generator based on field type and YAML data
-    field_type = field_spec.get("field_type", "generic")
-    characterset = field_spec.get("characterset", "alphanumeric")
-    min_length = field_spec.get("min_length", 1)
-    max_length = field_spec.get("max_length", min_length)
-    valid_values = field_spec.get("valid_values", [])
-    examples = field_spec.get("examples", "")
-    
-    # Determine generator type based on field type and context
-    if field_type in ["company_name", "first_name", "last_name", "address", "phone_number", "email", "city", "state", "zip_code", "ssn", "member_id", "group_number", "policy_number"]:
-        return random_faker_generator(field_type, min_length, max_length)
-    
-    elif field_type == "date":
-        # Determine date context based on field purpose or examples
-        if any(keyword in examples.lower() for keyword in ["enrollment", "eligibility", "start", "begin"]):
-            return random_past_date_generator("YYMMDD" if min_length == 6 else "YYYYMMDD")
-        elif any(keyword in examples.lower() for keyword in ["end", "termination", "expiration"]):
-            return random_future_date_generator("YYMMDD" if min_length == 6 else "YYYYMMDD")
-        else:
-            return random_past_date_generator("YYMMDD" if min_length == 6 else "YYYYMMDD", days_back=30)
-    
-    elif field_type == "time":
-        return random_time_generator("HHMM" if min_length == 4 else "HHMMSS")
-    
-    else:
-        # Default to random string generation
-        return random_string_generator(characterset, min_length, max_length, valid_values)

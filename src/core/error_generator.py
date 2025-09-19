@@ -10,30 +10,31 @@ Field-level errors:
 - missing_value: Field is empty
 - invalid_value: Field value not in valid_values list (requires valid_values)
 - invalid_character: Field contains characters not in allowed character set
-- wrong_length: Field length outside min/max constraints
+- invalid_length: Field length outside min/max constraints
 - invalid_date: Includes wrong length, wrong order, wrong format, invalid month, 
   invalid day, future date, and includes separators
 - invalid_time: Time format errors (wrong length, wrong format, invalid hour, invalidminute)
 - all_zeros: Field contains all zeros (common error for numeric fields)
 
 Structural errors (future implementation):
-- incorrect_count: Count field doesn't match actual count
+- incorrect_group_count: Group count field doesn't match actual count
 - incorrect_control_number: Control number doesn't match expected value
 - incorrect_date: Date inconsistencies between related fields
 - incorrect_time: Time inconsistencies between related fields
+- missing_envelope: Required envelope is missing
+- missing_segment: Required segment is missing
 - missing_field: Required field is missing
 - extra_field: Unexpected filed present
 - wrong_delimiter: Wrong delimiter used
 - wrong_terminator: Wrong terminator used
 - missing_terminator: Missing terminator
-- missing_segment: Required segment is missing
-- missing_envelope: Required envelope is missing
+
 
 PROTECTION: Generator defaults to missing_value or "N/A" if needed information is not available
 
 TODO: Update blank_value_generator and missing_value_generator to handle both required and non-required fields
 
-TODO: Implement faker-specific wrong_length_generator for fields that use faker data (names, addresses, etc.) - need to handle realistic length variations
+TODO: Implement faker-specific invalid_length_generator for fields that use faker data (names, addresses, etc.) - need to handle realistic length variations
 
 COMPLETED: ✅ Error scenario weighting implemented using equal weights for MVP
 NOTE: Currently using equal weights for all scenarios within a field because:
@@ -45,6 +46,10 @@ TODO: Implement remaining error generators:
 FIELD-LEVEL ERRORS:
 - invalid_date_generator: For ISA09 (date) - wrong format, future dates, invalid dates
 - invalid_time_generator: For ISA10 (time) - wrong format, invalid times
+- invalid_character_generator using wrong character set for realism
+  - More realistic than injecting single random bad characters
+  - Developer misunderstanding requirements more likely than a typo or corrupt bit
+  - Example: ISA06 alphanumeric but generated using expanded character set 
 
 STRUCTURAL ERRORS (ISA/IEA specific):
 - incorrect_count_generator: IEA01 count doesn't match actual functional group count
@@ -61,6 +66,12 @@ GENERAL STRUCTURAL ERRORS:
 - extra_field_generator: Add unexpected fields to segments
 - wrong_terminator_generator: Use wrong segment terminator
 - missing_envelope: Required envelope is missing
+
+TODO: Submit Python PR for str.join() final_joiner parameter:
+    ", ".join(items, final_joiner=" or ")  # → "A, B or C"
+    
+NOTE: Finally, a valid argument against the Oxford comma! Can you see why?
+
 """
 
 import random
@@ -145,28 +156,32 @@ def parse_segment_specs(raw_yaml):
     return parsed_specs
 
 # Field-level error generators
-def blank_value_generator(field_designation, field_spec, valid_value):
+def blank_value_generator(field_designation, field_spec, valid_value, error_info=None):
     """Generate blank value error meaning spaces with required length."""
     min_length = field_spec.get("min_length", 1)
     max_length = field_spec.get("max_length", min_length)
     target_length = random.randint(min_length, max_length)
     blank_value = " " * target_length
     
-    return {
-        "error_type": "blank_value",
-        "error_value": blank_value,
-        "error_explanation": f"Required field {field_designation} is blank withspaces only"
-    }
-
-def missing_value_generator(field_designation, field_spec, valid_value):
+    # Update error_info if provided
+    if error_info is not None:
+        error_info["error_type"] = "blank_value"
+        error_info["error_value"] = blank_value
+        error_info["error_explanation"] = f"{field_designation} is blank with spaces only"
+    
+    return blank_value
+    
+def missing_value_generator(field_designation, field_spec, valid_value, error_info=None):
     """Generate missing value error (empty string)."""
-    return {
-        "error_type": "missing_value", 
-        "error_value": "",
-        "error_explanation": f"Required field {field_designation} is missing"
-    }
-
-def invalid_value_generator(field_designation, field_spec, valid_value):
+    # Update error_info if provided
+    if error_info is not None:
+        error_info["error_type"] = "missing_value"
+        error_info["error_value"] = ""
+        error_info["error_explanation"] = f"{field_designation} is missing"
+    
+    return ""
+    
+def invalid_value_generator(field_designation, field_spec, valid_value, error_info=None):
     """Generate invalid value error (value not in valid_values list)."""
     common_errors = field_spec.get("common_errors", [])
     valid_values = field_spec.get("valid_values", [])
@@ -192,17 +207,28 @@ def invalid_value_generator(field_designation, field_spec, valid_value):
     # Fallback protection
     else:
         invalid_value = "N/A"
+        
+    # Update error_info if provided
+    if error_info is not None:
+        error_info["error_type"] = "invalid_value"
+        error_info["error_value"] = str(invalid_value)
+        # Show valid values with elegant formatting using smart join
+        def smart_join(items, final_joiner=" or "):
+            """Join items with commas, using final_joiner before the last item."""
+            if len(items) <= 1:
+                return "".join(f"'{item}'" for item in items)
+            return ", ".join(f"'{item}'" for item in items[:-1]) + f"{final_joiner}'{items[-1]}'"
+        
+        valid_list = smart_join(valid_values)
+        
+        error_info["error_explanation"] = f"{field_designation} contains invalid value '{invalid_value}' not {valid_list}"
     
-    return {
-        "error_type": "invalid_value",
-        "error_value": str(invalid_value),
-        "error_explanation": f"Field {field_designation} contains invalid value '{invalid_value}' not in valid list"
-    }
-
-def invalid_character_generator(field_designation, field_spec, valid_value):
+    return str(invalid_value)
+    
+def invalid_character_generator(field_designation, field_spec, valid_value, error_info=None):
     """Generate invalid character error (characters not in allowed character set)."""
     characterset = field_spec.get("characterset", "alphanumeric")
-    
+        
     # Load character sets
     character_sets = load_character_sets()
     
@@ -215,26 +241,38 @@ def invalid_character_generator(field_designation, field_spec, valid_value):
         return {
             "error_type": "invalid_character",
             "error_value": "N/A",
-            "error_explanation": f"Field {field_designation} cannot generate invalid characters (at highest character set level)"
+            "error_explanation": f"{field_designation} cannot generate invalid characters (at highest character set level)"
         }
     
     # Use the provided valid_value as base and inject unsafe characters
     result = str(valid_value)
     target_length = len(result)
+    injected_chars = []
     
-    # Add 1-3 unsafe characters at random positions
-    num_unsafe = random.randint(1, min(3, target_length))
+    # Add unsafe characters at random positions (heavily weight single character)
+    if random.random() < 0.8:  # 80% chance of single character
+        num_unsafe = 1
+    elif random.random() < 0.95:  # 15% chance of two characters  
+        num_unsafe = 2
+    else:  # 5% chance of three characters
+        num_unsafe = min(3, target_length)
     for _ in range(num_unsafe):
         pos = random.randint(0, target_length - 1)
-        result = result[:pos] + random.choice(unsafe_chars) + result[pos + 1:]
+        injected_char = random.choice(unsafe_chars)
+        injected_chars.append(injected_char)
+        result = result[:pos] + injected_char + result[pos + 1:]
+        
+    # Update error_info if provided
+    if error_info is not None:
+        error_info["error_type"] = "invalid_character"
+        error_info["error_value"] = result
+        # Show which specific invalid characters were injected
+        chars_list = ", ".join(f"'{char}'" for char in set(injected_chars))
+        error_info["error_explanation"] = f"{field_designation} contains invalid characters: {chars_list}"
     
-    return {
-        "error_type": "invalid_character",
-        "error_value": result,
-        "error_explanation": f"Field {field_designation} contains invalid characters not in allowed character set"
-    }
+    return result
 
-def wrong_length_generator(field_designation, field_spec, valid_value):
+def invalid_length_generator(field_designation, field_spec, valid_value, error_info=None):
     """Generate wrong length error (value outside min/max length constraints)."""
     min_length = field_spec.get("min_length", 1)
     max_length = field_spec.get("max_length", min_length)
@@ -260,23 +298,28 @@ def wrong_length_generator(field_designation, field_spec, valid_value):
         extra_chars = ''.join(random.choice(allowed_chars) for _ in range(target_length - current_length))
         result = result + extra_chars
     
-    return {
-        "error_type": "wrong_length",
-        "error_value": result,
-        "error_explanation": f"Field {field_designation} has wrong length {len(result)}, expected {min_length}-{max_length}"
-    }
+    # Update error_info if provided
+    if error_info is not None:
+        error_info["error_type"] = "invalid_length"
+        error_info["error_value"] = result
+        error_info["error_explanation"] = f"{field_designation} has wrong length {len(result)}, expected {min_length}-{max_length}"
+    
+    return result
 
-def all_zeros_generator(field_designation, field_spec, valid_value):
+def all_zeros_generator(field_designation, field_spec, valid_value, error_info=None):
     """Generate all zeros error for numeric fields."""
     min_length = field_spec.get("min_length", 1)
     max_length = field_spec.get("max_length", min_length)
     target_length = random.randint(min_length, max_length)
+    error_value = "0" * target_length
     
-    return {
-        "error_type": "all_zeros",
-        "error_value": "0" * target_length,
-        "error_explanation": f"Field {field_designation} contains all zeros, which is invalid"
-    }
+    # Update error_info if provided
+    if error_info is not None:
+        error_info["error_type"] = "all_zeros"
+        error_info["error_value"] = error_value
+        error_info["error_explanation"] = f"{field_designation} contains all zeros, which is invalid"
+    
+    return error_value
 
 # Helper functions
 def random_string_generator(characterset, min_length, max_length):
@@ -321,13 +364,30 @@ def pick_random_field_for_error(segment_name):
     return random.choice(segment_fields)
 
 
-def structural_error_generator(error_type="fallback"):
-    """Generate structural errors (stub implementation)."""
-    return {
-        "error_type": error_type,
-        "error_value": "STRUCTURAL_ERROR",
-        "error_explanation": f"Structural error: {error_type} (implementation pending)"
-    }
+def structural_error_generator(error_type="fallback", field_values=None, error_info=None):
+    """Generate structural errors by modifying field_values list."""
+    if field_values is None:
+        field_values = []
+    
+    # Update error_info if provided (like field error generators)
+    if error_info is not None:
+        if error_type == "fallback":
+            error_info["error_type"] = "missing_segment"
+            error_info["error_value"] = ""  # Empty string = missing segment
+            error_info["error_explanation"] = "Segment is missing (structural error fallback)"
+        else:
+            error_info["error_type"] = "missing_segment"
+            error_info["error_value"] = ""  # Empty string = missing segment
+            error_info["error_explanation"] = f"Structural error: {error_type} (implementation pending - fallback to missing segment)"
+    
+    # TODO: Implement actual structural error modifications:
+    # - wrong_delimiter: Replace all "*" with "|" or other delimiters
+    # - missing_terminator: Remove the final "~"
+    # - extra_field: Add an extra field to the list
+    # - missing_field: Remove a required field from the list
+    
+    # Return the modified segment value (empty string for missing segment)
+    return ""
 
 def is_error_in_field(field_designation, error_info):
     """Check if there is an error in this specific field based on error_info."""
@@ -346,7 +406,7 @@ def field_error_generator(field_designation, field_spec, valid_value):
         field_designation: Field identifier (e.g., "ISA01")
         field_spec: Field specification from YAML
         valid_value: Current valid value for the field
-        
+    
     Returns:
         dict: Error information with type, value, and explanation
     """
@@ -369,7 +429,7 @@ def field_error_generator(field_designation, field_spec, valid_value):
         "missing_value": missing_value_generator,
         "invalid_value": invalid_value_generator,
         "invalid_character": invalid_character_generator,
-        "wrong_length": wrong_length_generator,
+        "invalid_length": invalid_length_generator,
         "all_zeros": all_zeros_generator,
     }
     

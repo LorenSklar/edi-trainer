@@ -67,10 +67,12 @@ def generate_834_transaction(error_rate=0.0, count=1):
     segment_list = load_segment_list()
 
     
+    # Shared error state dictionary - passed by reference through call chain 
+    # With error value returned by error generators at the end of the chain
     error_info = {
-        "error_target": None,      # "segment" or "field" where the error occurs
+        "error_target": None,      # "segment" or "field" 
         "error_segment": None,     # Which segment (ISA, IEA, etc) or None
-        "error_field": None,       # Which field (01, 02, etc) or None
+        "error_field": None,       # Which field (ISA01, IEA02, etc) or None
         "error_type": None,        # invalid value, missing value, etc.
         "error_value": None,       # The actual erroneous value to use
         "error_explanation": None  # List the rule that was violated
@@ -85,10 +87,16 @@ def generate_834_transaction(error_rate=0.0, count=1):
         if segment_list:
             error_info["error_segment"] = random.choice(segment_list)
             
-            # If field error, pick a specific field from that segment
+            # If field error, discover all fields for that specific segment
             if error_info["error_target"] == "FIELD":
-                from .error_generator import pick_random_field_for_error
-                error_info["error_field"] = pick_random_field_for_error(error_info["error_segment"])
+                from .envelope_segment_generator import load_field_specs
+                field_specs = load_field_specs()
+                
+                segment_name = error_info["error_segment"]
+                if segment_name in field_specs and 'fields' in field_specs[segment_name]:
+                    segment_fields = list(field_specs[segment_name]['fields'].keys())
+                    if segment_fields:
+                        error_info["error_field"] = random.choice(segment_fields)
     
     # PHASE 1: GENERATE - Generate all segment data
     envelope_data = generate_envelope_data(error_info)

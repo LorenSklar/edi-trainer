@@ -80,14 +80,11 @@ def main():
             # Generate list of hints and solution
             hints = []
             
-            # Hint 1: Segment and Field
-            hint_parts = []
-            if error_info.get("error_segment", None):
-                hint_parts.append(f"Segment with error: {error_info['error_segment']}")
-            if error_info.get("error_field", None):
-                hint_parts.append(f"Field with error: {error_info['error_field']}")
-            if hint_parts:
-                hints.append("❓ FIRST HINT:\n" + "\n".join(hint_parts))
+            # Hint 1: Segment OR Field (not both)
+            if error_info.get("error_target") == "SEGMENT" and error_info.get("error_segment", None):
+                hints.append("❓ FIRST HINT:\n" + f"Segment with error: {error_info['error_segment']}")
+            elif error_info.get("error_target") == "FIELD" and error_info.get("error_field", None):
+                hints.append("❓ FIRST HINT:\n" + f"Field with error: {error_info['error_field']}")
             
             # Hint 2: Error Type
             hint_parts = []

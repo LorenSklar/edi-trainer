@@ -109,7 +109,7 @@ fields:
     max_length: 15
     examples: '"SENDER_ID      ", "COMPANY_NAME   ", "HR_SYS_123     "'
     error_weight: "very_common"
-    error_scenarios: ["invalid_character", "wrong_length", "blank_value", "missing_value"]
+    error_scenarios: ["invalid_character", "invalid_length", "blank_value", "missing_value"]
     required: true
     position: 6
     default: "SENDER_ID      "
@@ -139,7 +139,7 @@ fields:
     max_length: 15
     examples: '"RECEIVER_ID    ", "CARRIER_NAME   ", "BCBS_123       "'
     error_weight: "very_common"
-    error_scenarios: ["invalid_character", "wrong_length", "blank_value", "missing_value"]
+    error_scenarios: ["invalid_character", "invalid_length", "blank_value", "missing_value"]
     required: true
     position: 8
     default: "RECEIVER_ID    "
@@ -216,7 +216,7 @@ fields:
     max_length: 9
     examples: '"000000001", "000000123", "123456789"'
     error_weight: "rare"
-    error_scenarios: ["all_zeros", "invalid_character", "wrong_length", "blank_value", "missing_value"]
+    error_scenarios: ["all_zeros", "invalid_character", "invalid_length", "blank_value", "missing_value"]
     required: true
     position: 13
     default: "123456789"
@@ -277,7 +277,7 @@ fields:
     max_length: 5
     examples: '"1", "2", "10", "100"'
     error_weight: "rare"
-    error_scenarios: ["incorrect_count", "all_zeros", "invalid_character", "wrong_length", "blank_value", "missing_value"]
+    error_scenarios: ["incorrect_count", "all_zeros", "invalid_character", "invalid_length", "blank_value", "missing_value"]
     required: true
     position: 1
     default: "1"
@@ -291,7 +291,7 @@ fields:
     max_length: 9
     examples: '"000000001", "000000123", "123456789"'
     error_weight: "rare"
-    error_scenarios: ["incorrect_control_number", "all_zeros", "invalid_character", "wrong_length", "blank_value", "missing_value"]
+    error_scenarios: ["incorrect_control_number", "all_zeros", "invalid_character", "invalid_length", "blank_value", "missing_value"]
     required: true
     position: 2
     default: "123456789"
