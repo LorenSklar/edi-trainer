@@ -22,3 +22,6 @@ Thumbs.db
 # Project output files
 *.txt
 !requirements.txt
+
+# Development notes
+notes.md
