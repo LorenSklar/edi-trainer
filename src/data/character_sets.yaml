@@ -6,3 +6,13 @@ alpha: "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 alphanumeric: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 printable: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ *~:>+^"
 extended: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ *~:>+^%[]_{}\\|<>`#$"
+
+# Safe character sets to avoid accidental inclusion of EDI special characters
+printable_safe: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ "
+extended_safe: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ %[]_{}\\|<>`#$"
+
+# Unsafe character sets for error generation
+numeric_unsafe: "ABCDEFGHIJKLMNOPQRSTUVWXYZ *~:>+^%[]_{}\\|<>`#$"
+alpha_unsafe: "0123456789abcdefghijklmnopqrstuvwxyz *~:>+^%[]_{}\\|<>`#$"
+alphanumeric_unsafe: "abcdefghijklmnopqrstuvwxyz *~:>+^%[]_{}\\|<>`#$"
+printable_unsafe: "abcdefghijklmnopqrstuvwxyz*~:>+^%[]_{}\\|<>`#$"

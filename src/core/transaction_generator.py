@@ -84,6 +84,11 @@ def generate_834_transaction(error_rate=0.0, count=1):
         # Pick a random segment to target
         if segment_list:
             error_info["error_segment"] = random.choice(segment_list)
+            
+            # If field error, pick a specific field from that segment
+            if error_info["error_target"] == "FIELD":
+                from .error_generator import pick_random_field_for_error
+                error_info["error_field"] = pick_random_field_for_error(error_info["error_segment"])
     
     # PHASE 1: GENERATE - Generate all segment data
     envelope_data = generate_envelope_data(error_info)
