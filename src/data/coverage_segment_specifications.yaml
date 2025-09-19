@@ -1,3 +1,5 @@
 # Coverage Segment Specifications
 # N1, INS, REF, DTP, HD, COB segments for EDI 834 transactions
 # TODO: Implement field definitions when segment generators are built
+
+# NOTE: N1, REF, and DTP also appear in header_segment_specifications.yaml - transfer changes to both locations

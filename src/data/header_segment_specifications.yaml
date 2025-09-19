@@ -1,0 +1,342 @@
+# Header Segment and Field Definitions
+# BGN (Beginning Segment) - transaction purpose, dates, reference numbers
+# N1 (Name segments) - sponsor, insurance company, broker
+# REF (Reference segments) - group numbers, policy numbers, etc.
+# DTP (Date segments) - eligibility dates, coverage periods
+# These segments provide the business context for the transaction
+#
+# ERROR GENERATION CONFIGURATION:
+# - error_weight: Semantic error frequency (very_common, common, rare, never)
+# - error_scenarios: List of specific error types this field can generate
+# - common_errors: Explicit invalid values for this field
+
+segments:
+  BGN:
+    name: "Beginning Segment"
+    description: "Defines the beginning of a transaction and contains transaction purpose, dates, and reference numbers"
+    purpose: "Establishes the business context and purpose of the transaction"
+    rules: "Segment contains exactly 8 fields separated by asterisks (*). Ends with tilde (~)."
+    required: true
+    position: "first_header"
+
+  N1:
+    name: "Name Segment"
+    description: "Identifies entities (sponsor, insurance company, broker) in the transaction"
+    purpose: "Provides entity identification and relationship information"
+    rules: "Segment contains variable fields separated by asterisks (*). Ends with tilde (~)."
+    required: false
+    position: "header"
+    # NOTE: N1 also appears in coverage_segment_specifications.yaml - transfer changes to both locations
+
+  REF:
+    name: "Reference Information Segment"
+    description: "Provides reference numbers and identifiers"
+    purpose: "Contains group numbers, policy numbers, and other reference data"
+    rules: "Segment contains variable fields separated by asterisks (*). Ends with tilde (~)."
+    required: false
+    position: "header"
+    # NOTE: REF also appears in coverage_segment_specifications.yaml - transfer changes to both locations
+
+  DTP:
+    name: "Date/Time/Period Segment"
+    description: "Provides date and time information for various business purposes"
+    purpose: "Contains eligibility dates, coverage periods, and other date-related data"
+    rules: "Segment contains exactly 3 fields separated by asterisks (*). Ends with tilde (~)."
+    required: false
+    position: "header"
+    # NOTE: DTP also appears in coverage_segment_specifications.yaml - transfer changes to both locations
+
+fields:
+  # BGN Segment Fields (8 fields)
+  BGN01:
+    name: "Transaction Set Purpose Code"
+    purpose: "Identifies the purpose of the transaction"
+    rules: "Exactly 2 characters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09"]
+    # 00=Original, 01=Cancellation, 02=Add, 03=Delete, 04=Change, etc.
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 1
+    default: "00"
+
+  BGN02:
+    name: "Reference Identification"
+    purpose: "Unique reference number for this transaction"
+    rules: "1 to 30 characters. Cannot be blank."
+    characterset: "printable"
+    min_length: 1
+    max_length: 30
+    examples: '"12345", "TRANS001", "BGN20250117001"'
+    error_weight: "common"
+    error_scenarios: ["invalid_character", "invalid_length", "blank_value", "missing_value"]
+    required: true
+    position: 2
+    default: "12345"
+
+  BGN03:
+    name: "Date"
+    purpose: "Date the transaction was created"
+    rules: "Exactly 8 digits in CCYYMMDD format. Cannot be blank."
+    characterset: "numeric"
+    min_length: 8
+    max_length: 8
+    examples: '"20250117", "20241201", "20250315"'
+    # Format: CCYYMMDD (4-digit year, 2-digit month, 2-digit day)
+    error_weight: "common"
+    error_scenarios: ["invalid_date", "blank_value", "missing_value"]
+    required: true
+    position: 3
+    default: "20250117"
+
+  BGN04:
+    name: "Time"
+    purpose: "Time the transaction was created"
+    rules: "Exactly 6 digits in HHMMSS format. Cannot be blank."
+    characterset: "numeric"
+    min_length: 6
+    max_length: 6
+    examples: '"143000", "090000", "235959"'
+    # Format: HHMMSS (24-hour format with seconds)
+    error_weight: "common"
+    error_scenarios: ["invalid_time", "blank_value", "missing_value"]
+    required: true
+    position: 4
+    default: "143000"
+
+  BGN05:
+    name: "Time Zone Code"
+    purpose: "Time zone for the transaction time"
+    rules: "Exactly 4 characters. Cannot be blank."
+    characterset: "alpha"
+    min_length: 4
+    max_length: 4
+    valid_values: ["EDT", "EST", "CDT", "CST", "MDT", "MST", "PDT", "PST", "UTC"]
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 5
+    default: "EDT"
+
+  BGN06:
+    name: "Reference Identification"
+    purpose: "Additional reference number"
+    rules: "1 to 30 characters. Optional field."
+    characterset: "printable"
+    min_length: 1
+    max_length: 30
+    examples: '"REF001", "ADDITIONAL123", "BACKUP456"'
+    error_weight: "rare"
+    error_scenarios: ["invalid_character", "invalid_length"]
+    required: false
+    position: 6
+    default: ""
+
+  BGN07:
+    name: "Transaction Type Code"
+    purpose: "Type of transaction being processed"
+    rules: "Exactly 2 characters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"]
+    # Various transaction types (enrollment, termination, etc.)
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 7
+    default: "01"
+
+  BGN08:
+    name: "Action Code"
+    purpose: "Action to be taken with this transaction"
+    rules: "Exactly 2 characters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["00", "01", "02", "03", "04", "05"]
+    # 00=No action, 01=Add, 02=Change, 03=Delete, etc.
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 8
+    default: "00"
+
+  # N1 Segment Fields (variable)
+  N101:
+    name: "Entity Identifier Code"
+    purpose: "Identifies the type of entity"
+    rules: "Exactly 2 characters. Cannot be blank."
+    characterset: "alpha"
+    min_length: 2
+    max_length: 2
+    valid_values: ["P5", "IN", "BO", "TV", "TT", "41", "45", "94", "96", "QB"]
+    # P5=Plan Sponsor, IN=Insurance Company, BO=Broker, etc.
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 1
+    default: "P5"
+
+  N102:
+    name: "Entity Name"
+    purpose: "Name of the entity"
+    rules: "1 to 60 characters. Cannot be blank."
+    characterset: "printable"
+    min_length: 1
+    max_length: 60
+    examples: '"ACME CORPORATION", "BLUE CROSS BLUE SHIELD", "JOHN DOE INSURANCE"'
+    error_weight: "very_common"
+    error_scenarios: ["invalid_character", "invalid_length", "blank_value", "missing_value"]
+    required: true
+    position: 2
+    default: "ACME CORPORATION"
+
+  N103:
+    name: "Identification Code Qualifier"
+    purpose: "Type of identification code"
+    rules: "Exactly 2 characters. Optional field."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["FI", "NI", "PI", "PP", "SV", "XV", "XX"]
+    # FI=Federal Tax ID, NI=National ID, PI=Payor ID, etc.
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: false
+    position: 3
+    default: "FI"
+
+  N104:
+    name: "Identification Code"
+    purpose: "The identification code"
+    rules: "2 to 80 characters. Optional field."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 80
+    examples: '"123456789", "ABC123", "TAXID987654321"'
+    error_weight: "common"
+    error_scenarios: ["invalid_character", "invalid_length", "blank_value", "missing_value"]
+    required: false
+    position: 4
+    default: "123456789"
+
+  # REF Segment Fields (variable)
+  REF01:
+    name: "Reference Identification Qualifier"
+    purpose: "Type of reference identification"
+    rules: "Exactly 2 characters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 2
+    max_length: 2
+    valid_values: ["0F", "1L", "2U", "3H", "4A", "5P", "6O", "7S", "8R", "9N"]
+    # 0F=Policy Number, 1L=Group Number, 2U=Member ID, etc.
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 1
+    default: "0F"
+
+  REF02:
+    name: "Reference Identification"
+    purpose: "The reference identification value"
+    rules: "1 to 50 characters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 1
+    max_length: 50
+    examples: '"POL123456", "GRP789012", "MEM345678"'
+    error_weight: "very_common"
+    error_scenarios: ["invalid_character", "invalid_length", "blank_value", "missing_value"]
+    required: true
+    position: 2
+    default: "POL123456"
+
+  # DTP Segment Fields (3 fields)
+  DTP01:
+    name: "Date/Time Qualifier"
+    purpose: "Type of date/time being provided"
+    rules: "Exactly 3 characters. Cannot be blank."
+    characterset: "alphanumeric"
+    min_length: 3
+    max_length: 3
+    valid_values: ["102", "356", "348", "349", "007", "008", "009", "010", "011", "012"]
+    # 102=Issue Date, 356=Effective Date, 348=Termination Date, etc.
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 1
+    default: "356"
+
+  DTP02:
+    name: "Date/Time Period Format Qualifier"
+    purpose: "Format of the date/time period"
+    rules: "Exactly 1 character. Cannot be blank."
+    characterset: "alpha"
+    min_length: 1
+    max_length: 1
+    valid_values: ["D", "R", "S", "T", "W", "Y", "Z"]
+    # D=Date, R=Range, S=Start Date, T=End Date, etc.
+    error_weight: "rare"
+    error_scenarios: ["blank_value", "missing_value", "invalid_value"]
+    required: true
+    position: 2
+    default: "D"
+
+  DTP03:
+    name: "Date/Time Period"
+    purpose: "The actual date/time value"
+    rules: "Exactly 8 digits in CCYYMMDD format. Cannot be blank."
+    characterset: "numeric"
+    min_length: 8
+    max_length: 8
+    examples: '"20250117", "20241201", "20250315"'
+    # Format: CCYYMMDD (4-digit year, 2-digit month, 2-digit day)
+    error_weight: "common"
+    error_scenarios: ["invalid_date", "blank_value", "missing_value"]
+    required: true
+    position: 3
+    default: "20250117"
+
+# Segment validation rules
+validation_rules:
+  # Transaction structure validation
+  transaction_begins_with_bgn:
+    description: "Transaction begins with valid BGN segment after envelope"
+    segment: "BGN"
+    rule: "transaction_starts_with_bgn"
+    
+  # Field count validation
+  bgn_field_count:
+    description: "BGN segment contains exactly 8 fields"
+    segment: "BGN"
+    rule: "exact_field_count_8"
+    
+  dtp_field_count:
+    description: "DTP segment contains exactly 3 fields"
+    segment: "DTP"
+    rule: "exact_field_count_3"
+    
+  # Date format validation
+  bgn_date_format:
+    description: "BGN03 requires CCYYMMDD format"
+    fields: ["BGN03"]
+    rule: "date_format_CCYYMMDD"
+    
+  bgn_time_format:
+    description: "BGN04 requires HHMMSS format"
+    fields: ["BGN04"]
+    rule: "time_format_HHMMSS"
+    
+  dtp_date_format:
+    description: "DTP03 requires CCYYMMDD format"
+    fields: ["DTP03"]
+    rule: "date_format_CCYYMMDD"
+    
+  # Business logic validation
+  bgn_date_time_consistency:
+    description: "BGN03 date and BGN04 time in past or present"
+    fields: ["BGN03", "BGN04"]
+    rule: "date_time_not_future"

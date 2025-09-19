@@ -2,44 +2,50 @@
 Coverage Segment Generator
 
 Generates coverage-related segments and their field generators for EDI 834 transactions.
-Handles policy/benefits information segments: N1, INS, REF, DTP, HD, COB.
+Handles coverage-specific segments: INS, HD, COB.
+
+NOTE: N1, REF, DTP segments are imported from header_segment_generator.py
+because they appear in multiple loops (header context and coverage context).
+The header generator provides the base implementation for these shared segments.
 """
 
 from .error_generator import field_error_generator, structural_error_generator
+from .header_segment_generator import generate_n1_segment, generate_ref_segment, generate_dtp_segment
 import random
 
+# Weight constants for valid value selection
+MOST_COMMON_WEIGHT = 0.9
+LESS_COMMON_WEIGHT = 0.05
 
-def generate_n1_segment(error_info=None):
-    """Generate N1 segment - Name"""
-    return "N1*P5*ACME CORPORATION*FI*123456789~"
-
+#=============================================================================
+# INS SEGMENT
+#=============================================================================
 
 def generate_ins_segment(error_info=None):
     """Generate INS segment - Insured Benefit"""
     return "INS*Y*18*001***FT~"
 
-
-def generate_ref_segment(error_info=None):
-    """Generate REF segment - Reference Information"""
-    return "REF*0F*987654321~"
-
-
-def generate_dtp_segment(error_info=None):
-    """Generate DTP segment - Date or Time Period"""
-    return "DTP*356*D8*20250917~"
-
+#=============================================================================
+# HD SEGMENT
+#=============================================================================
 
 def generate_hd_segment(error_info=None):
     """Generate HD segment - Health Coverage"""
     return "HD*021**HLT*PLAN001~"
 
+#=============================================================================
+# COB SEGMENT
+#=============================================================================
 
 def generate_cob_segment(error_info=None):
     """Generate COB segment - Coordination of Benefits"""
     return "COB*P*890111*5~"
 
 
-# Field generators for coverage segments
+#=============================================================================
+# FIELD GENERATORS
+#=============================================================================
+
 def generate_n1_entity_identifier_code(error_info=None):
     """Generate N101 field - Entity Identifier Code"""
     return "P5"
@@ -119,6 +125,10 @@ def generate_cob_coordination_of_benefits_code(error_info=None):
     """Generate COB03 field - Coordination of Benefits Code"""
     return "5"
 
+
+#=============================================================================
+# COVERAGE DATA GENERATION
+#=============================================================================
 
 def generate_coverage_data(error_info=None):
     """Generate coverage data"""

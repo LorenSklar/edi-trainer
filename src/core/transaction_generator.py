@@ -9,6 +9,7 @@ import random
 import yaml
 from pathlib import Path
 from .envelope_segment_generator import generate_envelope_data
+from .header_segment_generator import generate_header_data
 from .member_segment_generator import generate_member_data
 from .coverage_segment_generator import generate_coverage_data
 
@@ -18,6 +19,7 @@ def load_segment_list(verbose=False):
     data_dir = Path(__file__).parent.parent / "data"
     yaml_files = [
         "envelope_segment_specifications.yaml",
+        "header_segment_specifications.yaml",
         "member_segment_specifications.yaml", 
         "coverage_segment_specifications.yaml"
     ]
@@ -100,14 +102,20 @@ def generate_834_transaction(error_rate=0.0, count=1):
     
     # PHASE 1: GENERATE - Generate all segment data
     envelope_data = generate_envelope_data(error_info)
+    header_data = generate_header_data(error_info)
     member_data = generate_member_data(error_info)
     coverage_data = generate_coverage_data(error_info)
     
     """
-    TODO: Add different purposes for multiple N1, REF, DTP segments for realism
-      - N1: Sponsor, Insurance Company, Broker, etc.
-      - REF: Subscriber ID, Group Number, Policy Number, etc.
-      - DTP: Eligibility Date, Coverage Begin, Coverage End, etc.
+    TODO: Implement multiple instances of segments that can appear multiple times:
+      - N1: Currently only generates ONE N1 segment, but should generate multiple:
+        * N1*P5* (Plan Sponsor) - always required
+        * N1*IN* (Insurance Company) - always required  
+        * N1*BO* (Broker) - sometimes present
+        * N1*TV* (Third Party Administrator) - sometimes present
+      - REF: Multiple REF segments for different reference types
+      - DTP: Multiple DTP segments for different date purposes
+      - Check which other segments can have multiple instances per transaction
     """
     
     # Build transaction segments in order
@@ -120,21 +128,26 @@ def generate_834_transaction(error_rate=0.0, count=1):
     # Transaction sets (ST/SE loops)
     for i in range(count):
         segments.extend(envelope_data["st"])
-        segments.extend(envelope_data["bgn"])
+        segments.extend(header_data["bgn"])
         
-        # N1 segments (e.g. Sponsor, Insurance Company, sometimes Broker)
-        n1_count = random.choices([2, 3], weights=[70, 30])[0]
-        segments.extend(coverage_data["n1_segments"][:n1_count])
+        # Header segments (N1, REF, DTP from header context)
+        segments.extend(header_data["n1"])
+        segments.extend(header_data["ref"])
+        segments.extend(header_data["dtp"])
         
         segments.extend(coverage_data["ins"])
         
-        # REF segments (e.g. Subscriber ID, Group Number, Policy Number)
-        ref_count = random.choices([1, 2, 3], weights=[60, 30, 10])[0]
-        segments.extend(coverage_data["ref_segments"][:ref_count])
+        # Additional REF segments (e.g. Subscriber ID, Group Number, Policy Number)
+        # Note: First REF segment already added from header_data above
+        ref_count = random.choices([0, 1, 2], weights=[60, 30, 10])[0]
+        if ref_count > 0:
+            segments.extend(coverage_data["ref_segments"][:ref_count])
         
-        # DTP segments (e.g. Eligibility Date, Coverage Begin/End)
-        dtp_count = random.choices([1, 2, 3, 4], weights=[50, 30, 15, 5])[0]
-        segments.extend(coverage_data["dtp_segments"][:dtp_count])
+        # Additional DTP segments (e.g. Eligibility Date, Coverage Begin/End)
+        # Note: First DTP segment already added from header_data above
+        dtp_count = random.choices([0, 1, 2, 3], weights=[50, 30, 15, 5])[0]
+        if dtp_count > 0:
+            segments.extend(coverage_data["dtp_segments"][:dtp_count])
         
         segments.extend(member_data["nm1"])
         

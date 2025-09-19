@@ -8,33 +8,55 @@ Handles personal/demographic information segments: NM1, PER, N3, N4, DMG.
 from .error_generator import field_error_generator, structural_error_generator
 import random
 
+# Weight constants for valid value selection
+MOST_COMMON_WEIGHT = 0.9
+LESS_COMMON_WEIGHT = 0.05
+
+#=============================================================================
+# NM1 SEGMENT
+#=============================================================================
 
 def generate_nm1_segment(error_info=None):
     """Generate NM1 segment - Individual or Organizational Name"""
     return "NM1*IL*1*DOE*JOHN*M***34*987654321~"
 
+#=============================================================================
+# PER SEGMENT
+#=============================================================================
 
 def generate_per_segment(error_info=None):
     """Generate PER segment - Member Communications Numbers"""
     return "PER*IP**HP*7172343334*WP*7172341240~"
 
+#=============================================================================
+# N3 SEGMENT
+#=============================================================================
 
 def generate_n3_segment(error_info=None):
     """Generate N3 segment - Address Information"""
     return "N3*100 MARKET ST*APT 3G~"
 
+#=============================================================================
+# N4 SEGMENT
+#=============================================================================
 
 def generate_n4_segment(error_info=None):
     """Generate N4 segment - Geographic Location"""
     return "N4*CAMP HILL*PA*17011**CY*CUMBERLAND~"
 
+#=============================================================================
+# DMG SEGMENT
+#=============================================================================
 
 def generate_dmg_segment(error_info=None):
     """Generate DMG segment - Demographic Information"""
     return "DMG*D8*19900115*M~"
 
 
-# Field generators for member segments
+#=============================================================================
+# FIELD GENERATORS
+#=============================================================================
+
 def generate_nm1_entity_identifier_code(error_info=None):
     """Generate NM101 field - Entity Identifier Code"""
     return "IL"
@@ -74,6 +96,10 @@ def generate_dmg_gender_code(error_info=None):
     """Generate DMG03 field - Gender Code"""
     return "M"
 
+
+#=============================================================================
+# MEMBER DATA GENERATION
+#=============================================================================
 
 def generate_member_data(error_info=None):
     """Generate member data"""

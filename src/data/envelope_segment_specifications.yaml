@@ -1,5 +1,6 @@
 # Envelope Segment and Field Definitions
-# ISA, IEA, GS, GE, ST, SE, BGN segments
+# ISA/IEA (Interchange envelope), GS/GE (Functional group envelope), ST/SE (Transaction set envelope)
+# These are the transport layer segments that wrap the actual transaction data
 #
 # ERROR GENERATION CONFIGURATION:
 # - error_weight: Semantic error frequency (very_common, common, rare, never)

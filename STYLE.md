@@ -74,13 +74,96 @@ segment = f"ISA*{'*'.join(field_values)}~"
 - **Example**: `"ISA15 contains invalid value 'NA' not 'P' or 'T'"`
 - **DO NOT**: Use redundant prefixes like "Field " or "Required field "
 
+## Error Weight Conversion
+
+### Semantic Error Weights
+- **YAML Values**: `"very_common"`, `"common"`, `"rare"`, `"never"`
+- **Conversion Function**: `convert_error_weight_to_rate(weight_string)`
+- **Rate Mapping**:
+  - `"very_common"` → `0.3` (30% chance)
+  - `"common"` → `0.1` (10% chance)  
+  - `"rare"` → `0.02` (2% chance)
+  - `"never"` → `0.0` (0% chance)
+
+### Usage Pattern
+```python
+# Every segment generator needs this conversion
+error_rate = convert_error_weight_to_rate(field_spec.get("error_weight", "never"))
+if random.random() < error_rate:
+    # Apply error to this field
+```
+
+### Implementation Location
+- **Function**: `convert_error_weight_to_rate()` in `error_generator.py`
+- **Usage**: Called in every segment generator for field-level error decisions
+- **Default**: Fields without `error_weight` default to `"never"` (0% chance)
+
 ## Code Organization
 
 ### File Responsibilities
 - **`data_generator.py`**: Core helper functions, no field-specific logic
 - **`envelope_segment_generator.py`**: ISA/IEA field generators + segment building
+- **`header_segment_generator.py`**: BGN/N1/REF/DTP field generators + segment building
+- **`member_segment_generator.py`**: NM1/PER/N3/N4/DMG field generators + segment building
+- **`coverage_segment_generator.py`**: INS/HD/COB field generators + segment building
 - **`error_generator.py`**: Individual error type generators
 - **`transaction_generator.py`**: Orchestrates segment generation
+
+### Section Organization Pattern
+All segment generator files should use consistent section headers:
+
+```python
+#=============================================================================
+# SEGMENT NAME
+#=============================================================================
+
+def generate_field_name():
+    """Generate SEGMENT01 - Field Description"""
+    return "value"
+
+#=============================================================================
+# FIELD GENERATORS
+#=============================================================================
+
+def generate_field_generator():
+    """Generate field value"""
+    return "value"
+
+#=============================================================================
+# DATA GENERATION
+#=============================================================================
+
+def generate_data():
+    """Generate all segments"""
+    return {"segment": [value]}
+```
+
+**Section Headers:**
+- **Top line**: `#=============================================================================`
+- **Section title**: `# SEGMENT NAME` or `# FIELD GENERATORS` or `# DATA GENERATION`
+- **Bottom line**: `#=============================================================================`
+- **Always use both top and bottom lines** for consistency
+
+### Constants and Configuration
+- **Weight Constants**: Define `MOST_COMMON_WEIGHT` and `LESS_COMMON_WEIGHT` at file top
+- **Magic Numbers**: Avoid hardcoded weights like `0.9` and `0.05` - use named constants
+- **Configuration**: Place all constants after imports, before functions
+
+**Standard Weight Values:**
+```python
+# Weight constants for valid value selection
+MOST_COMMON_WEIGHT = 0.9
+LESS_COMMON_WEIGHT = 0.05
+```
+
+**Usage Pattern:**
+```python
+if "preferred_value" in valid_values:
+    weights = [MOST_COMMON_WEIGHT if val == "preferred_value" else LESS_COMMON_WEIGHT for val in valid_values]
+    valid_value = pick_valid_value(valid_values, weights)
+else:
+    valid_value = pick_valid_value(valid_values)
+```
 
 ### TODO Management
 - **Location**: In-file comments with specific implementation notes

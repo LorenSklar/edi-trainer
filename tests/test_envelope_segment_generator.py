@@ -2,7 +2,7 @@
 """
 Test Envelope Segment Generator
 
-Tests the generation of envelope segments (ISA, IEA, GS, GE, ST, SE, BGN)
+Tests the generation of envelope segments (ISA, IEA, GS, GE, ST, SE)
 with focus on ISA/IEA control number matching and proper field structure.
 """
 

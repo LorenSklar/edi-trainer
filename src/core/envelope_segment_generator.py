@@ -16,6 +16,10 @@ import random
 import yaml
 from pathlib import Path
 
+# Weight constants for valid value selection
+MOST_COMMON_WEIGHT = 0.9
+LESS_COMMON_WEIGHT = 0.05
+
 # YAML cache - load once, use many times
 field_specs_cache = None
 
@@ -103,7 +107,7 @@ def generate_authorization_qualifier(error_target=None, error_info=None):
     valid_values = field_spec.get("valid_values", [])
     # "00" most common authorization qualifier
     if "00" in valid_values:
-        weights = [0.9 if val == "00" else 0.05 for val in valid_values]
+        weights = [MOST_COMMON_WEIGHT if val == "00" else LESS_COMMON_WEIGHT for val in valid_values]
         valid_value = pick_valid_value(valid_values, weights)
     else:
         valid_value = pick_valid_value(valid_values)
@@ -126,7 +130,7 @@ def generate_security_qualifier(error_target=None, error_info=None):
     valid_values = field_spec.get("valid_values", [])
     # "00" most common security qualifier
     if "00" in valid_values:
-        weights = [0.9 if val == "00" else 0.05 for val in valid_values]
+        weights = [MOST_COMMON_WEIGHT if val == "00" else LESS_COMMON_WEIGHT for val in valid_values]
         valid_value = pick_valid_value(valid_values, weights)
     else:
         valid_value = pick_valid_value(valid_values)
@@ -149,7 +153,7 @@ def generate_sender_qualifier(error_target=None, error_info=None):
     valid_values = field_spec.get("valid_values", [])
     # "ZZ" most common sender qualifier 
     if "ZZ" in valid_values:
-        weights = [0.9 if val == "ZZ" else 0.05 for val in valid_values]
+        weights = [MOST_COMMON_WEIGHT if val == "ZZ" else LESS_COMMON_WEIGHT for val in valid_values]
         valid_value = pick_valid_value(valid_values, weights)
     else:
         valid_value = pick_valid_value(valid_values)
@@ -181,7 +185,7 @@ def generate_receiver_qualifier(error_target=None, error_info=None):
     valid_values = field_spec.get("valid_values", [])
     # "ZZ" most common receiver qualifier
     if "ZZ" in valid_values:
-        weights = [0.9 if val == "ZZ" else 0.05 for val in valid_values]
+        weights = [MOST_COMMON_WEIGHT if val == "ZZ" else LESS_COMMON_WEIGHT for val in valid_values]
         valid_value = pick_valid_value(valid_values, weights)
     else:
         valid_value = pick_valid_value(valid_values)
@@ -239,7 +243,7 @@ def generate_repetition_separator(error_target=None, error_info=None):
     valid_values = field_spec.get("valid_values", [])
     # "^" most common repetition separator
     if "^" in valid_values:
-        weights = [0.9 if val == "^" else 0.05 for val in valid_values]
+        weights = [MOST_COMMON_WEIGHT if val == "^" else LESS_COMMON_WEIGHT for val in valid_values]
         valid_value = pick_valid_value(valid_values, weights)
     else:
         valid_value = pick_valid_value(valid_values)
@@ -258,7 +262,7 @@ def generate_version_number(error_target=None, error_info=None):
     valid_values = field_spec.get("valid_values", [])
     # "00501" most common version number
     if "00501" in valid_values:
-        weights = [0.9 if val == "00501" else 0.05 for val in valid_values]
+        weights = [MOST_COMMON_WEIGHT if val == "00501" else LESS_COMMON_WEIGHT for val in valid_values]
         valid_value = pick_valid_value(valid_values, weights)
     else:
         valid_value = pick_valid_value(valid_values)
@@ -315,7 +319,7 @@ def generate_component_separator(error_target=None, error_info=None):
     valid_values = field_spec.get("valid_values", [])
     # ":" most common component separator
     if ":" in valid_values:
-        weights = [0.9 if val == ":" else 0.05 for val in valid_values]
+        weights = [MOST_COMMON_WEIGHT if val == ":" else LESS_COMMON_WEIGHT for val in valid_values]
         valid_value = pick_valid_value(valid_values, weights)
     else:
         valid_value = pick_valid_value(valid_values)
@@ -461,9 +465,7 @@ def generate_se_segment(error_info=None):
     """Generate SE segment - Transaction Set Trailer"""
     return "SE*13*0001~"
 
-def generate_bgn_segment(error_info=None):
-    """Generate BGN segment - Beginning Segment"""
-    return "BGN*00*12345*20250917*143000****4~"
+# BGN segment moved to header_segment_generator.py
 
 def generate_envelope_data(error_info=None):
     """Generate envelope data"""
@@ -474,10 +476,10 @@ def generate_envelope_data(error_info=None):
         "isa": [generate_isa_segment(with_errors=False, error_info=error_info, control_number=control_number)],
         "gs": [generate_gs_segment(error_info)],
         "st": [generate_st_segment(error_info)],
-        "bgn": [generate_bgn_segment(error_info)],
         "se": [generate_se_segment(error_info)],
         "ge": [generate_ge_segment(error_info)],
         "iea": [generate_iea_segment(with_errors=False, error_info=error_info, control_number=control_number)]
+        # BGN moved to header_segment_generator.py
     }
 
 """
@@ -495,7 +497,7 @@ TODO:
    * GE (Functional Group Trailer) - 2 fields - currently returns hardcoded string
    * ST (Transaction Set Header) - 3 fields - currently returns hardcoded string
    * SE (Transaction Set Trailer) - 2 fields - currently returns hardcoded string
-   * BGN (Beginning Segment) - 8 fields - currently returns hardcoded string
+   * BGN moved to header_segment_generator.py
 - Add production vs training mode toggle for date ranges (30 years vs 3 years)
  - Create error_rate.yaml from real production data to replace hardcoded field weights
 
